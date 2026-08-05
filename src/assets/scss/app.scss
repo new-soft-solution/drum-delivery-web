@@ -1,0 +1,268 @@
+/*
+Template Name: Find A Table - Admin & Dashboard Template
+Author: Mannatthemes
+Version: 3.1.0
+File: App Css
+*/
+
+//Core files
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+
+@import "config/variables";
+@import "config/variables-dark";
+
+@import "bootstrap/scss/bootstrap";
+@import "bootstrap/scss/mixins";
+
+// @import "../../../node_modules/bootstrap/scss/bootstrap";
+
+@import "flatpickr/dist/flatpickr.css";
+
+@import "componets/alerts";
+@import "componets/breadcrumb";
+@import "componets/buttons";
+@import "componets/cards";
+@import "componets/dropdowns";
+@import "componets/forms";
+@import "componets/modals";
+@import "componets/pages";
+@import "componets/progress";
+@import "componets/root";
+@import "componets/spinner";
+@import "componets/tables";
+@import "componets/tab-tooltip";
+@import "componets/utilities";
+
+@import "structure/startbar";
+@import "structure/topbar";
+@import "structure/footer";
+
+@import "pages/chat";
+@import "pages/kanban";
+@import "pages/pricing";
+@import "pages/print";
+@import "pages/rating";
+@import "pages/ribbons";
+@import "pages/timeline";
+@import "pages/login";
+
+@import "plugins/calendar";
+@import "plugins/custom-scrollbar";
+@import "plugins/charts";
+@import "plugins/maps";
+@import "plugins/prismjs";
+@import "plugins/sweet-alert";
+@import "plugins/ui-slider";
+@import "plugins/tree";
+@import "custom-react";
+@import "plugins/flatpicker";
+@import "plugins/dropzone";
+@import "plugins/react-select";
+@import "componets/react-select";
+
+.vh-50 {
+  height: 50vh;
+}
+
+.text-nowrap {
+  white-space: nowrap !important;
+}
+
+.fat-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+}
+
+.border-collapse-separate {
+  border-collapse: separate !important;
+}
+
+.xs-btn {
+  font-size: 0.8em;
+  padding: 0.25rem 0.5rem;
+}
+
+.dropzone {
+  background: transparent !important;
+}
+
+.dz-message {
+  width: 100% !important;
+}
+
+.offcanvas {
+  z-index: 9999;
+}
+
+.offcanvas-backdrop {
+  z-index: 9999;
+}
+
+.form-select {
+  background-color: var(--bs-card-bg, var(--bs-modal-bg)) !important;
+  cursor: pointer;
+}
+
+.offcanvas.offcanvas-end {
+  --bs-offcanvas-width: 475px;
+}
+
+@media (max-width: 576px) {
+  .offcanvas.offcanvas-end {
+    --bs-offcanvas-width: 100vw;
+  }
+}
+
+.form-check-input {
+  border-color: #79797AFF !important;
+}
+
+.form-check-input:checked {
+  border-color: var(--bs-primary) !important;
+}
+
+html[data-bs-theme="dark"] {
+  .form-check-input {
+    border-color: #79797AFF !important;
+  }
+
+  .form-check-input:checked {
+    border-color: var(--bs-primary) !important;
+  }
+}
+
+.toast-container {
+  position: fixed !important;
+}
+
+// Subscription plan badges
+.badge-plan-basic {
+  background-color: $gray-600;
+  color: $white;
+}
+
+.badge-plan-standard {
+  background-color: $blue;
+  color: $white;
+}
+
+.badge-plan-premium {
+  background-color: $purple;
+  color: $white;
+}
+
+.badge-plan-gold {
+  background-color: $yellow;
+  color: $gray-900;
+}
+
+.custom-checkbox > input[type="checkbox"] {
+  border-color: var(--bs-primary) !important;
+}
+
+// Column Selector Dropdown
+.column-selector-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 1050;
+  min-width: 210px;
+  max-height: 360px;
+  overflow-y: auto;
+  background-color: var(--bs-body-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.5rem;
+  box-shadow: var(--bs-box-shadow-sm);
+}
+
+.column-selector-header {
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--bs-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.column-selector-list {
+  padding: 0.25rem 0;
+}
+
+.column-selector-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--bs-tertiary-bg);
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.column-selector-label {
+  font-size: 0.825rem;
+  color: var(--bs-body-color);
+  user-select: none;
+}
+
+.column-selector-footer {
+  padding: 0.45rem 0.85rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.column-selector-show-all {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--bs-primary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.archived-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(226, 75, 74, 0.12);
+  color: #A32D2D;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.row--archived td:first-child {
+  border-left: 3px solid #E24B4A;
+}
+
+.row--archived td {
+  background-color: rgba(226, 75, 74, 0.03);
+}
+
+.is-active {
+  opacity: 1;
+}
+
+.is-deleted {
+  color: var(--bs-secondary-color, #6c757d) !important;
+  opacity: 0.65;
+  text-decoration: line-through !important;
+  pointer-events: none;
+}

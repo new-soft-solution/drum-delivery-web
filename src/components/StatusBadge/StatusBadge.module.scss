@@ -1,0 +1,119 @@
+@import "~bootstrap/scss/functions";
+@import "~bootstrap/scss/variables";
+
+// Palette
+$blue: #0d6efd !default;
+$indigo: #6610f2 !default;
+$purple: #7367f0 !default;
+$pink: #fd3c97 !default;
+$red: #ef4d56 !default;
+$orange: #fd7e14 !default;
+$yellow: #ff9f43 !default;
+$green: #22c55e !default;
+$teal: #22c5ad !default;
+$cyan: #41cbd8 !default;
+
+.badgeRoot {
+  /* tone variables */
+  --badge-bg: transparent;
+  --badge-fg: currentColor;
+  --badge-border: transparent;
+
+  /* custom overrides */
+  --custom-badge-bg: null;
+  --custom-badge-color: #2b2d3b;
+  --custom-badge-border: null;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+
+  /* MD defaults (explicit so we can restore after Bootstrap overrides) */
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+
+  background-color: var(--badge-bg);
+  color: var(--badge-fg);
+  // border: 1px solid var(--badge-border);
+
+  .icon {
+    color: currentColor;
+  }
+}
+
+/* Custom colors override */
+.hasCustomColors {
+  background-color: var(--custom-badge-bg, var(--badge-bg)) !important;
+  color: var(--custom-badge-color, var(--badge-fg)) !important;
+  border-color: var(--custom-badge-border, var(--badge-border)) !important;
+}
+
+/* --- SIZE VARIANTS (high specificity & !important to beat Bootstrap) --- */
+/* Use .badgeRoot.<size> so it outranks .badge and utility classes */
+.badgeRoot.sm {
+  font-size: 0.75rem !important;
+  padding: 0.4rem 0.55rem !important;
+}
+.badgeRoot.md {
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.6rem !important;
+}
+.badgeRoot.lg {
+  font-size: 0.95rem !important;
+  padding: 0.6rem 0.65rem !important;
+}
+
+.icon {
+  display: inline-grid;
+  place-items: center;
+}
+.text {
+  display: inline-block;
+}
+
+/* neutral text color when no tone */
+.tone-secondary {
+  color: #2b2d3b;
+}
+
+/* Helper to create both solid & soft tones */
+@mixin tone($name, $color) {
+  $tone-name: "" + $name;
+  .tone-#{$tone-name} {
+    --badge-bg: #{$color};
+    --badge-fg: #{color-contrast($color)};
+    --badge-border: #{mix($color, #000, 18%)};
+  }
+
+  .tone-#{$tone-name}.soft {
+    --badge-bg: #{rgba($color, 0.12)};
+    --badge-fg: #{$color};
+    --badge-border: #{rgba($color, 0.18)};
+  }
+}
+
+/* Tones from your palette */
+@include tone(blue, $blue);
+@include tone(indigo, $indigo);
+@include tone(purple, $purple);
+@include tone(pink, $pink);
+@include tone(red, $red);
+@include tone(orange, $orange);
+@include tone(yellow, $yellow);
+@include tone(green, $green);
+@include tone(teal, $teal);
+@include tone(cyan, $cyan);
+
+/* Neutral based on Bootstrap */
+.tone-secondary {
+  --badge-bg: #dfdfdf;
+  --badge-fg: #{color-contrast($secondary)};
+  --badge-border: #{mix($secondary, #000, 18%)};
+}
+.tone-secondary.soft {
+  --badge-bg: var(--bs-secondary-bg-subtle);
+  --badge-fg: var(--bs-secondary);
+  --badge-border: var(--bs-secondary-border-subtle);
+}

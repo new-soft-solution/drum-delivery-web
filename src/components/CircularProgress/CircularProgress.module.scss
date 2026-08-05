@@ -1,0 +1,41 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.svg {
+  transform: rotate(-90deg);
+}
+
+.bg {
+  fill: none;
+  stroke: var(--bs-border-color);
+  opacity: 0.4;
+}
+
+.progress {
+  fill: none;
+  stroke-linecap: round;
+  transition:
+    stroke-dashoffset 0.5s ease,
+    stroke 0.3s ease;
+}
+
+.label {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bs-body-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* subtle hover effect for admin tables */
+
+.wrapper:hover .progress {
+  filter: drop-shadow(0 0 4px rgba(var(--bs-primary-rgb), 0.35));
+}

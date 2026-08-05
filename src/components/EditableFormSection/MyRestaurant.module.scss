@@ -1,0 +1,57 @@
+.container {
+  padding: 20px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #cacaca;
+
+  h5 {
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+.editButton {
+  padding: 0;
+  color: #6c757d;
+
+  &:hover {
+    color: #0d6efd;
+  }
+}
+
+.fieldGroup {
+  margin-bottom: 20px;
+}
+
+.fieldValue {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.saveSection {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.editingSection {
+  .form-control {
+    margin-bottom: 15px;
+  }
+}
+
+.viewSection {
+  .fieldValue {
+    margin-bottom: 15px;
+  }
+}
