@@ -113,6 +113,13 @@ const STATUS_TO_TONE: Record<string, Tone> = {
   voucher: "blue",
 
   no_payment_required: "cyan",
+
+  // Drum Tracer statuses
+  "in transit": "blue",
+  assigned: "blue",
+  missing: "red",
+  overdue: "red",
+  arrived: "cyan",
 };
 
 function prettifyLabel(s: string) {

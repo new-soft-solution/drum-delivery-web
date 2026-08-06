@@ -35,7 +35,18 @@ export async function GET() {
   return NextResponse.json({
     orders: { total: orders.length, ...ordersByStatus },
     shipments: { total: shipments.length, ...shipmentsByStatus },
-    drums: { total: dtStore.drums.length, available: dtStore.drums.filter((d) => d.status === "Available").length },
+    drums: {
+      total: dtStore.drums.length,
+      available: dtStore.drums.filter((d) => d.status === "Available").length,
+      inTransit: dtStore.drums.filter((d) => d.status === "In Transit").length,
+      missing: dtStore.drums.filter((d) => d.status === "Missing").length,
+    },
+    truckDeliveries: {
+      total: dtStore.truckDeliveries.length,
+      scheduled: dtStore.truckDeliveries.filter((t) => t.status === "Scheduled").length,
+    },
+    clients: dtStore.clients.length,
+    sites: dtStore.sites.length,
     recentOrders,
     recentShipments,
   });
