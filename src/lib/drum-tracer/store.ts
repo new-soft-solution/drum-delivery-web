@@ -84,6 +84,17 @@ export interface DTTruckDelivery {
   created_at: string;
 }
 
+export interface DTUserProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  role: string;
+  username: string;
+  password: string; // demo-only, plain text, never do this in a real app
+  avatarColor?: string;
+}
+
 interface Store {
   nextId: Record<string, number>;
   clients: DTClient[];
@@ -92,6 +103,7 @@ interface Store {
   drums: DTDrum[];
   shipments: DTShipment[];
   truckDeliveries: DTTruckDelivery[];
+  profile: DTUserProfile;
 }
 
 function seed(): Store {
@@ -179,6 +191,15 @@ function seed(): Store {
     drums,
     shipments: [shipment],
     truckDeliveries: [],
+    profile: {
+      firstName: "Admin",
+      lastName: "User",
+      email: "admin@drumtracer.com",
+      phone: "+31 6 1234 5678",
+      role: "Administrator",
+      username: "admin",
+      password: "admin123",
+    },
   };
 }
 

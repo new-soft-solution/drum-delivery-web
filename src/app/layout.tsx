@@ -80,7 +80,7 @@ export default async function RootLayout({ children }: ChildrenType) {
         <div id="__next_splash">
           <NextIntlClientProvider messages={messages}>
             <AppProvidersWrapper>
-              <AppShell>{children}</AppShell>
+              {children}
             </AppProvidersWrapper>
           </NextIntlClientProvider>
         </div>
