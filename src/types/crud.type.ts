@@ -84,8 +84,8 @@ export interface CRUDTableProps<T, TFilters extends BaseFilter = BaseFilter> {
   onFilterChange?: (filters: TFilters) => void;
   onColumnVisibilityChange?: (visibility: VisibilityState) => void;
   onAddItem?: () => void;
-  onBulkDelete?: (ids: number[]) => void;
-  onBulkRestore?: (ids: number[]) => void;
+  onBulkDelete?: (ids: (number | string)[]) => void;
+  onBulkRestore?: (ids: (number | string)[]) => void;
   getRowClassName?: (row: Row<T>) => string;
   selectedActions?: JSX.Element;
   options?: CRUDTableOptions<TFilters>;

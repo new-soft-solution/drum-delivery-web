@@ -11,14 +11,13 @@ import Toast from "react-bootstrap/Toast";
 import ToastContainer, { ToastPosition } from "react-bootstrap/ToastContainer";
 
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-
+import type { ChildrenType } from "@/types/component-props.type";
 import type {
   NotificationContextType,
   ShowNotificationType,
   ToastrProps,
 } from "@/types/context.type";
-import {BootstrapVariantType, ChildrenType} from "@/types/component-props.type";
-
+import type { BootstrapVariantType } from "@/types/component-props.type";
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
   undefined,

@@ -1,17 +1,8 @@
 "use client";
 
 import React from "react";
-import {
-  Controller,
-  Path,
-  type Control,
-  type FieldValues,
-  type RegisterOptions,
-} from "react-hook-form";
-import PhoneNumberInput, {
-  type BasePhoneNumberInputProps,
-  validateE164,
-} from "./PhoneNumberInput";
+import { type Control, Controller, type FieldValues, Path, type RegisterOptions } from "react-hook-form";
+import PhoneNumberInput, { type BasePhoneNumberInputProps, validateE164 } from "./PhoneNumberInput";
 import type { Value } from "react-phone-number-input";
 
 /**
@@ -47,8 +38,7 @@ function RHFPhoneNumberInput<TFieldValues extends FieldValues>({
 }: RHFPhoneNumberInputProps<TFieldValues>) {
   // Compose validation without using setValueAs (Controller omits it in its type)
   const mergedRules:
-    | RegisterOptions<TFieldValues, Path<TFieldValues>>
-    | undefined = {
+    RegisterOptions<TFieldValues, Path<TFieldValues>> | undefined = {
     // If caller provided validate, keep theirs; otherwise use our E.164 validator
     ...rules,
     validate:
@@ -81,6 +71,7 @@ function RHFPhoneNumberInput<TFieldValues extends FieldValues>({
             value={displayValue}
             onChange={handleChange as (v: Value) => void}
             error={error?.message}
+            size={rest.size ?? "sm"}
           />
         );
       }}

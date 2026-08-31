@@ -93,17 +93,17 @@ export function CountrySelect({
       styles={{
         control: (base, state) => ({
           ...base,
-          borderColor: state.isFocused ? "#008071" : "#ced4da",
-          boxShadow: state.isFocused ? "0 0 0 1px #008071" : "none",
+          borderColor: state.isFocused ? "#223b76" : "#ced4da",
+          boxShadow: state.isFocused ? "0 0 0 0px #223b76" : "none",
           "&:hover": {
-            borderColor: "#008071",
+            borderColor: "#223b76",
           },
         }),
 
         option: (base, state) => ({
           ...base,
           backgroundColor: state.isSelected
-            ? "#008071"
+            ? "#223b76"
             : state.isFocused
               ? "#e7f1ff"
               : "white",

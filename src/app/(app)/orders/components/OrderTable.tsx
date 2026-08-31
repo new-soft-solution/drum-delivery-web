@@ -3,11 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { OrderDetails } from "./OrderDetails";
 import { OrderForm } from "./OrderForm";
-import OrderFilter from "./OrderFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import { deleteOrder, getOrders } from "@/services/drum-tracer/order.service";
-import { DTOrder, DTOrderFilterType } from "@/types/drum-tracer/order.type";
+import { deleteOrder, getOrders } from "@/services/order.service";
+import { Order } from "@/types/order.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -15,26 +14,52 @@ import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Avatar from "@/components/ui/Avatar/Avatar";
 
+const STATUS_LABELS: Record<string, string> = {
+  CREATED: "Created",
+  ASSIGNED_TO_SHIPMENT: "Assigned to Shipment",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
 export const OrderTable = () => {
   const queryClient = useQueryClient();
-  const { state, setState, buildQueryParams, handleAddItem, handleBulkDelete, closeModal, getDefaultColumns } =
-    useCRUDTable<DTOrder>("dt-orders", deleteOrder, {
-      isEdit: true,
-      isView: true,
-      isDelete: true,
-      showCheckBox: true,
-    });
+  const {
+    state,
+    setState,
+    buildQueryParams,
+    handleAddItem,
+    handleBulkDelete,
+    closeModal,
+    getDefaultColumns,
+  } = useCRUDTable<Order>("orders", deleteOrder, {
+    isEdit: true,
+    isView: true,
+    isDelete: true,
+    showCheckBox: true,
+  });
 
-  const params = { ...buildQueryParams(), search: state.globalFilter || undefined, ...state.filters };
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   const { data, isFetching, isLoading, error } = useQuery({
-    queryKey: ["dt-orders", params],
+    queryKey: ["orders", params],
     queryFn: () =>
       getOrders({
         search: params.search,
         ordering: params.ordering,
-        status: state.filters.status as string,
-        page: typeof state.pagination?.pageIndex === "number" ? state.pagination.pageIndex + 1 : 1,
-        page_size: typeof state.pagination?.pageSize === "number" ? state.pagination.pageSize : 10,
+        page:
+          typeof state.pagination?.pageIndex === "number"
+            ? state.pagination.pageIndex + 1
+            : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
@@ -42,81 +67,100 @@ export const OrderTable = () => {
   const columns = useMemo(
     () => [
       ...getDefaultColumns.slice(0, -1),
-      { header: "P.O Number", accessorKey: "po_number" },
+      { header: "Order Number", accessorKey: "order_number" },
       {
         header: "Client",
-        accessorKey: "client_name",
-        cell: (cell: CellContext<DTOrder, unknown>) => (
-          <span className="d-flex align-items-center gap-2">
-            <Avatar name={cell.getValue<string>()} size={28} />
-            {cell.getValue<string>()}
-          </span>
-        ),
+        cell: (cell: CellContext<Order, unknown>) => {
+          const name = cell.row.original.client_details?.name ?? "Unknown";
+          return (
+            <span className="d-flex align-items-center gap-2">
+              <Avatar name={name} size={28} />
+              {name}
+            </span>
+          );
+        },
+      },
+      {
+        header: "Quantity",
+        cell: (cell: CellContext<Order, unknown>) => {
+          const o = cell.row.original;
+          return o.quantity != null
+            ? `${o.quantity} ${o.unit ?? ""}`.trim()
+            : "—";
+        },
       },
       {
         header: "Status",
         accessorKey: "status",
-        cell: (cell: CellContext<DTOrder, unknown>) => <StatusBadge status={cell.getValue<string>()} />,
+        cell: (cell: CellContext<Order, unknown>) => {
+          const status = cell.getValue<string>();
+          return <StatusBadge status={STATUS_LABELS[status] ?? status} />;
+        },
       },
       {
-        header: "Order Date",
-        accessorKey: "created_at",
-        cell: (cell: CellContext<DTOrder, unknown>) =>
-          new Date(cell.getValue<string>()).toLocaleDateString(),
+        header: "Created",
+        cell: (cell: CellContext<Order, unknown>) =>
+          new Date(
+            cell.row.original.creation_date ?? cell.row.original.created_at,
+          ).toLocaleDateString(),
       },
       ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
-  const initialFilters: DTOrderFilterType = {};
-
   return (
     <>
-      <CRUDTable<DTOrder, DTOrderFilterType>
+      <CRUDTable<Order>
         data={data?.results || []}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<DTOrder, DTOrderFilterType>}
+        state={state as CRUDTableState<Order>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
-            pagination: typeof pagination === "function" ? pagination(prev.pagination) : pagination,
+            pagination:
+              typeof pagination === "function"
+                ? pagination(prev.pagination)
+                : pagination,
           }))
         }
         onSortingChange={(sorting) =>
           setState((prev) => ({
             ...prev,
-            sorting: typeof sorting === "function" ? sorting(prev.sorting) : sorting,
+            sorting:
+              typeof sorting === "function" ? sorting(prev.sorting) : sorting,
           }))
         }
-        onGlobalFilterChange={(filter) => setState((prev) => ({ ...prev, globalFilter: filter }))}
+        onGlobalFilterChange={(filter) =>
+          setState((prev) => ({ ...prev, globalFilter: filter }))
+        }
         onRowSelectionChange={(selection) =>
           setState((prev) => ({
             ...prev,
-            rowSelection: typeof selection === "function" ? selection(prev.rowSelection) : selection,
+            rowSelection:
+              typeof selection === "function"
+                ? selection(prev.rowSelection)
+                : selection,
           }))
         }
-        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{
-          entityName: "Order",
-          tableHeader: "All Orders",
-          filterOptions: { initialFilters, filterComponent: OrderFilter },
-        }}
+        options={{ entityName: "Order", tableHeader: "All Orders" }}
       />
 
-      <DetailsModal<DTOrder>
+      <DetailsModal<Order>
         show={state.modalState.showViewEditModal}
         onHide={closeModal}
         item={state.modalState.selectedItem ?? undefined}
         mode={state.modalState.mode}
         isLoading={isLoading}
         error={error}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["dt-orders"] })}
+        onSuccess={() =>
+          queryClient.invalidateQueries({ queryKey: ["orders"] })
+        }
         viewComponent={({ item }) => <OrderDetails order={item} />}
         formComponent={OrderForm}
         entityName="Order"

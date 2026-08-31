@@ -17,19 +17,19 @@ interface CrudOptions {
   showCheckBox?: boolean;
 }
 export interface RestoreProps {
-  id?: number;
-  ids?: number[];
+  id?: number | string;
+  ids?: (number | string)[];
   cascade?: boolean;
 }
 export interface BulkRestoreResponse {
   success: boolean;
   message: string;
   restored_count: number;
-  restored_ids: number[];
-  conflict_ids: number[];
-  missing_ids: number[];
+  restored_ids: (number | string)[];
+  conflict_ids: (number | string)[];
+  missing_ids: (number | string)[];
 }
-export const useCRUDTable = <T extends { id: number; deleted_at?: string }>(
+export const useCRUDTable = <T extends { id: number | string; deleted_at?: string }>(
   entityName: string,
   deleteMutation?: ({ id, ids }: DeleteProps) => Promise<void>,
   options: CrudOptions = {
@@ -146,7 +146,7 @@ export const useCRUDTable = <T extends { id: number; deleted_at?: string }>(
   );
 
   const handleBulkDelete = useCallback(
-    async (ids: number[]) => {
+    async (ids: (number | string)[]) => {
       const { accepted, control } = await confirm({
         title: "Delete Selected",
         message: `Are you sure you want to delete ${ids.length} ${entityName}s?`,
@@ -210,7 +210,7 @@ export const useCRUDTable = <T extends { id: number; deleted_at?: string }>(
   );
 
   const handleBulkRestore = useCallback(
-    async (ids: number[]) => {
+    async (ids: (number | string)[]) => {
       const { accepted, control } = await confirm({
         title: "Restore Selected",
         message: `Are you sure you want to restore ${ids.length} selected ${entityName}${ids.length !== 1 ? "s" : ""}?`,

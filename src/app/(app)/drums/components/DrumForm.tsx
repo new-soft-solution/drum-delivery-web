@@ -8,6 +8,7 @@ import { DTDrum } from "@/types/drum-tracer/drum.type";
 import { dtDrumFormSchema, DTDrumFormValues } from "@/types/schemas/dt-drum.schema";
 import { createDrum, updateDrum } from "@/services/drum-tracer/drum.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 interface DrumFormProps {
@@ -47,6 +48,7 @@ export const DrumForm = ({ item: drum, onCancel, onSuccess }: DrumFormProps) => 
     },
     onError: (error) => {
       showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      applyServerErrors(error, form.setError);
     },
   });
 

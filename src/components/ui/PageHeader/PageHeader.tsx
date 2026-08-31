@@ -18,7 +18,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ icon, title, subtitle, c
             width: 46,
             height: 46,
             borderRadius: 12,
-            background: "linear-gradient(135deg, #203975, #4a7aec)",
+            background: "linear-gradient(135deg, #008071, #14b8a6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

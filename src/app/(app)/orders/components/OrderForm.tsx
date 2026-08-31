@@ -4,40 +4,54 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
-import { DTOrder } from "@/types/drum-tracer/order.type";
-import { dtOrderFormSchema, DTOrderFormValues } from "@/types/schemas/dt-order.schema";
-import { createOrder, updateOrder } from "@/services/drum-tracer/order.service";
-import { getClients } from "@/services/drum-tracer/client.service";
+import { Order, ORDER_STATUS_OPTIONS } from "@/types/order.type";
+import { orderFormSchema, OrderFormValues } from "@/types/schemas/order.schema";
+import { createOrder, updateOrder } from "@/services/order.service";
+import { getClients } from "@/services/client.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 interface OrderFormProps {
-  item?: DTOrder;
+  item?: Order;
   onCancel: () => void;
   onSuccess: () => void;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  CREATED: "Created",
+  ASSIGNED_TO_SHIPMENT: "Assigned to Shipment",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
 
 export const OrderForm = ({ item: order, onCancel, onSuccess }: OrderFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!order;
   const { showNotification } = useNotificationContext();
 
+  // The real /api/clients/ endpoint doesn't support a large page_size —
+  // only `page` is documented — so this fetches page 1 as-is. For a
+  // backend with more than one page of clients, this dropdown would need
+  // its own searchable/paginated autocomplete instead of a plain <select>.
   const { data: clientsData } = useQuery({
-    queryKey: ["dt-clients-all"],
-    queryFn: () => getClients({ page_size: 200 }),
+    queryKey: ["clients-for-order-form"],
+    queryFn: () => getClients({}),
   });
 
-  const form = useForm<DTOrderFormValues>({
-    resolver: zodResolver(dtOrderFormSchema),
+  const form = useForm<OrderFormValues>({
+    resolver: zodResolver(orderFormSchema),
     defaultValues: {
-      po_number: order?.po_number || "",
-      client_id: order?.client_id || 0,
+      client: order?.client || "",
       description: order?.description || "",
-      status: order?.status || "Created",
+      quantity: order?.quantity ?? undefined,
+      unit: order?.unit || "",
+      status: order?.status || "CREATED",
+      is_active: order?.is_active ?? true,
     },
   });
 
-  const mutation = useMutation<unknown, NormalizedError, DTOrderFormValues>({
+  const mutation = useMutation<unknown, NormalizedError, OrderFormValues>({
     mutationFn: (payload) =>
       isEdit && order?.id ? updateOrder(order.id, payload) : createOrder(payload),
     onSuccess: () => {
@@ -45,42 +59,25 @@ export const OrderForm = ({ item: order, onCancel, onSuccess }: OrderFormProps) 
         message: isEdit ? "Order updated successfully" : "Order created successfully",
         variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["dt-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       onSuccess();
     },
     onError: (error) => {
       showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      applyServerErrors(error, form.setError);
     },
   });
 
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
       <Row>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>
-              P.O Number <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Control
-              {...form.register("po_number")}
-              isInvalid={!!form.formState.errors.po_number}
-              placeholder="Enter P.O number"
-            />
-            <Form.Control.Feedback type="invalid">
-              {form.formState.errors.po_number?.message}
-            </Form.Control.Feedback>
-          </Form.Group>
-        </Col>
-        <Col md={6}>
+        <Col md={12}>
           <Form.Group className="mb-3">
             <Form.Label>
               Client <span className="text-danger">*</span>
             </Form.Label>
-            <Form.Select
-              {...form.register("client_id")}
-              isInvalid={!!form.formState.errors.client_id}
-            >
-              <option value={0}>Select a client</option>
+            <Form.Select {...form.register("client")} isInvalid={!!form.formState.errors.client}>
+              <option value="">Select a client</option>
               {clientsData?.results.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -88,18 +85,32 @@ export const OrderForm = ({ item: order, onCancel, onSuccess }: OrderFormProps) 
               ))}
             </Form.Select>
             <Form.Control.Feedback type="invalid">
-              {form.formState.errors.client_id?.message}
+              {form.formState.errors.client?.message}
             </Form.Control.Feedback>
           </Form.Group>
         </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Quantity</Form.Label>
+            <Form.Control type="number" {...form.register("quantity")} placeholder="e.g., 12" />
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Unit</Form.Label>
+            <Form.Control {...form.register("unit")} placeholder="e.g., drums, meters, KMs" />
+          </Form.Group>
+        </Col>
         {isEdit && (
-          <Col md={6}>
+          <Col md={12}>
             <Form.Group className="mb-3">
               <Form.Label>Status</Form.Label>
               <Form.Select {...form.register("status")}>
-                <option value="Created">Created</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Completed">Completed</option>
+                {ORDER_STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
+                ))}
               </Form.Select>
             </Form.Group>
           </Col>

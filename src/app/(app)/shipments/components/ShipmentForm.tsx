@@ -9,6 +9,7 @@ import { dtShipmentFormSchema, DTShipmentFormValues } from "@/types/schemas/dt-s
 import { createShipment, updateShipment } from "@/services/drum-tracer/shipment.service";
 import { getSites } from "@/services/drum-tracer/site.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 interface ShipmentFormProps {
@@ -53,6 +54,7 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
     },
     onError: (error) => {
       showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      applyServerErrors(error, form.setError);
     },
   });
 

@@ -1,34 +1,62 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form } from "react-bootstrap";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { saveSession } from "@/lib/drum-tracer/session-client";
+import { getMe, loginUser } from "@/services/auth/auth.service";
+import { useSessionStore } from "@/store/useSessionStore";
+import { useNotificationContext } from "@/context/useNotificationContext";
+import { applyServerErrors } from "@/utils/applyServerErrors";
+import { loginFormSchema, LoginFormValues } from "@/types/schemas/login.schema";
+import type { NormalizedError } from "@/types/error.type";
+import Link from "next/link";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/";
+  const setSession = useSessionStore((s) => s.setSession);
+  const { showNotification } = useNotificationContext();
+
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  async function handleSubmit(values: LoginFormValues) {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Sign in failed");
-      saveSession(json.user);
-      router.push("/");
+      const res = await loginUser(values.email, values.password);
+
+      // The login response's `user` field isn't confirmed by the backend's
+      // API docs (see the comment in auth.service.ts) — fetch it
+      // explicitly via /api/auth/me/ if it wasn't included, so the topbar
+      // and profile page always have real data rather than a guess.
+      let user = res.user;
+      if (!user) {
+        useSessionStore.getState().setSession({
+          accessToken: res.access,
+          refreshToken: res.refresh,
+          user: {} as never,
+        });
+        user = await getMe();
+      }
+
+      setSession({ accessToken: res.access, refreshToken: res.refresh, user });
+      router.push(nextPath);
+      router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      const normalized = err as NormalizedError;
+      showNotification({
+        message: normalized?.message || "Sign in failed",
+        variant: "danger",
+      });
+      applyServerErrors(normalized, form.setError);
     } finally {
       setLoading(false);
     }
@@ -38,52 +66,49 @@ export default function LoginPage() {
     <div className="card border-0 shadow-sm">
       <div className="card-body p-4 p-md-5">
         <h3 className="fw-bold mb-1">Welcome back</h3>
-        <p className="text-muted small mb-4">Sign in to your Drum Tracer account</p>
+        <p className="text-muted small mb-4">
+          Sign in to your Drum Tracer account
+        </p>
 
-        {error && (
-          <div className="alert alert-danger py-2 small d-flex align-items-center gap-2" role="alert">
-            <IconifyIcon icon="ri:error-warning-line" />
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="form-label small fw-semibold">Username or email</label>
-            <div className="input-group">
+        <Form onSubmit={form.handleSubmit(handleSubmit)} noValidate>
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-semibold">Email</Form.Label>
+            <div className="input-group has-validation">
               <span className="input-group-text bg-white">
-                <IconifyIcon icon="ri:user-line" />
+                <IconifyIcon icon="ri:mail-line" />
               </span>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+              <Form.Control
+                type="email"
+                placeholder="you@company.com"
                 autoFocus
-                required
+                isInvalid={!!form.formState.errors.email}
+                {...form.register("email")}
               />
+              <Form.Control.Feedback type="invalid">
+                {form.formState.errors.email?.message}
+              </Form.Control.Feedback>
             </div>
-          </div>
+          </Form.Group>
 
-          <div className="mb-2">
+          <Form.Group className="mb-2">
             <div className="d-flex justify-content-between">
-              <label className="form-label small fw-semibold">Password</label>
-              <Link href="/forgot-password" className="small fw-semibold text-decoration-none">
+              <Form.Label className="small fw-semibold">Password</Form.Label>
+              <Link
+                href="/forgot-password"
+                className="small fw-semibold text-decoration-none"
+              >
                 Forgot password?
               </Link>
             </div>
-            <div className="input-group">
+            <div className="input-group has-validation">
               <span className="input-group-text bg-white">
                 <IconifyIcon icon="ri:lock-line" />
               </span>
-              <input
+              <Form.Control
                 type={showPassword ? "text" : "password"}
-                className="form-control"
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
+                isInvalid={!!form.formState.errors.password}
+                {...form.register("password")}
               />
               <button
                 type="button"
@@ -92,26 +117,40 @@ export default function LoginPage() {
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                <IconifyIcon icon={showPassword ? "ri:eye-off-line" : "ri:eye-line"} />
+                <IconifyIcon
+                  icon={showPassword ? "ri:eye-off-line" : "ri:eye-line"}
+                />
               </button>
+              <Form.Control.Feedback type="invalid">
+                {form.formState.errors.password?.message}
+              </Form.Control.Feedback>
             </div>
-          </div>
+          </Form.Group>
 
-          <button type="submit" className="btn btn-primary w-100 mt-4 py-2 fw-semibold" disabled={loading}>
+          <button
+            type="submit"
+            className="btn btn-primary w-100 mt-4 py-2 fw-semibold"
+            disabled={loading}
+          >
             {loading ? (
               <span className="d-inline-flex align-items-center gap-2">
-                <span className="spinner-border spinner-border-sm" /> Signing in...
+                <span className="spinner-border spinner-border-sm" /> Signing
+                in...
               </span>
             ) : (
               "Sign in"
             )}
           </button>
-        </form>
-
-        <div className="text-center small text-muted mt-4 pt-3 border-top">
-          Demo credentials: <code>admin</code> / <code>admin123</code>
-        </div>
+        </Form>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

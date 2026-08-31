@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import clsx from "clsx";
 import { Dropdown } from "react-bootstrap";
 import { useRouter } from "next/navigation";
@@ -9,26 +9,33 @@ import LeftSideBarToggle from "./components/LeftSideBarToggle";
 import useScrollEvent from "@/hooks/useScrollEvent";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
-import { clearSession, getSession, type SessionUser } from "@/lib/drum-tracer/session-client";
+import { useSessionStore } from "@/store/useSessionStore";
+import { logoutUser } from "@/services/auth/auth.service";
 
 const TopNavigationBar = () => {
   const { scrollY } = useScrollEvent();
   const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
-
-  useEffect(() => {
-    setUser(getSession());
-    const onChange = () => setUser(getSession());
-    window.addEventListener("dt-session-changed", onChange);
-    return () => window.removeEventListener("dt-session-changed", onChange);
-  }, []);
-
-  function handleLogout() {
+  const user = useSessionStore((s) => s.session?.user);
+  const clearSession = useSessionStore((s) => s.clearSession);
+  const { session } = useSessionStore.getState();
+  async function handleLogout() {
+    try {
+      await logoutUser(session?.refreshToken ?? "");
+    } catch {
+      // Even if the backend call fails (network hiccup, already-expired
+      // session, etc.), still clear the local session below — there's no
+      // scenario where staying "logged in" client-side is the right
+      // fallback.
+    }
     clearSession();
     router.push("/login");
+    router.refresh();
   }
 
-  const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : "Admin User";
+  const fullName =
+    user && (user.first_name || user.last_name)
+      ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()
+      : user?.email || "Signed in";
 
   return (
     <div className="topbar d-print-none">
@@ -42,8 +49,13 @@ const TopNavigationBar = () => {
           <ul className="topbar-item list-unstyled d-inline-flex align-items-center mb-0">
             <LeftSideBarToggle />
             <li className="mx-3 welcome-text">
-              <h5 className="mb-0 fw-semibold text-truncate" style={{ letterSpacing: "0.01em" }}>
-                <span className="text-body-secondary fw-normal me-1">Midal Cables</span>
+              <h5
+                className="mb-0 fw-semibold text-truncate"
+                style={{ letterSpacing: "0.01em" }}
+              >
+                <span className="text-body-secondary fw-normal me-1">
+                  Midal Cables
+                </span>
                 Drum Tracer
               </h5>
             </li>
@@ -57,9 +69,15 @@ const TopNavigationBar = () => {
                   className="btn btn-link nav-link d-flex align-items-center gap-2 text-decoration-none border-0 bg-transparent"
                   style={{ boxShadow: "none" }}
                 >
-                  <Avatar name={fullName} size={30} />
+                  <Avatar
+                    name={fullName}
+                    size={30}
+                    imageSrc={user?.avatar ?? undefined}
+                  />
                   <span className="d-none d-sm-inline">
-                    <span className="fw-semibold small d-block text-dark">{fullName}</span>
+                    <span className="fw-semibold small d-block text-dark">
+                      {fullName}
+                    </span>
                     <span className="small text-muted" style={{ fontSize: 11 }}>
                       {user?.role ?? "Administrator"}
                     </span>
@@ -69,14 +87,6 @@ const TopNavigationBar = () => {
                   <Dropdown.Item as={Link} href="/profile">
                     <IconifyIcon icon="ri:user-line" className="me-2" />
                     My Profile
-                  </Dropdown.Item>
-                  <Dropdown.Item as={Link} href="/profile/edit">
-                    <IconifyIcon icon="ri:edit-line" className="me-2" />
-                    Edit Profile
-                  </Dropdown.Item>
-                  <Dropdown.Item as={Link} href="/profile/change-password">
-                    <IconifyIcon icon="ri:lock-password-line" className="me-2" />
-                    Change Password
                   </Dropdown.Item>
                   <Dropdown.Divider />
                   <Dropdown.Item onClick={handleLogout} className="text-danger">

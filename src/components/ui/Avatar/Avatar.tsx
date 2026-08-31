@@ -30,10 +30,32 @@ interface AvatarProps {
   name: string;
   size?: number;
   className?: string;
+  imageSrc?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ name, size = 36, className }) => {
+export const Avatar: React.FC<AvatarProps> = ({ name, size = 36, className, imageSrc }) => {
   const palette = PALETTE[hashString(name || "?") % PALETTE.length];
+
+  if (imageSrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- avatars are
+      // remote, user-controlled URLs; next/image would need a wildcard
+      // remotePatterns entry we can't guess ahead of a real backend domain.
+      <img
+        src={imageSrc}
+        alt={name}
+        className={className}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+
   return (
     <span
       className={className}

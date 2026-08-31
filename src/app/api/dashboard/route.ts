@@ -1,28 +1,19 @@
 import { NextResponse } from "next/server";
 import { dtStore } from "@/lib/drum-tracer/store";
 
+// Only covers the still-local/mock entities (Shipments, Drums, Sites,
+// Truck Deliveries). Client and Order stats are fetched client-side
+// directly from the real backend in the Dashboard page component itself
+// (via src/services/client.service.ts / order.service.ts), since this
+// server route has no access to the user's browser-held access token.
 export async function GET() {
-  const orders = dtStore.orders;
   const shipments = dtStore.shipments;
 
-  const ordersByStatus = {
-    created: orders.filter((o) => o.status === "Created").length,
-    assigned: orders.filter((o) => o.status === "Assigned").length,
-    completed: orders.filter((o) => o.status === "Completed").length,
-  };
   const shipmentsByStatus = {
     created: shipments.filter((s) => s.status === "Created").length,
     inTransit: shipments.filter((s) => s.status === "In Transit").length,
     delivered: shipments.filter((s) => s.status === "Delivered").length,
   };
-
-  const recentOrders = [...orders]
-    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .slice(0, 5)
-    .map((o) => ({
-      ...o,
-      client_name: dtStore.clients.find((c) => c.id === o.client_id)?.name ?? "Unknown",
-    }));
 
   const recentShipments = [...shipments]
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -33,7 +24,6 @@ export async function GET() {
     }));
 
   return NextResponse.json({
-    orders: { total: orders.length, ...ordersByStatus },
     shipments: { total: shipments.length, ...shipmentsByStatus },
     drums: {
       total: dtStore.drums.length,
@@ -45,9 +35,7 @@ export async function GET() {
       total: dtStore.truckDeliveries.length,
       scheduled: dtStore.truckDeliveries.filter((t) => t.status === "Scheduled").length,
     },
-    clients: dtStore.clients.length,
     sites: dtStore.sites.length,
-    recentOrders,
     recentShipments,
   });
 }

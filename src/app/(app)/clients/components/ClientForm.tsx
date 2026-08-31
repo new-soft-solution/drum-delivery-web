@@ -1,59 +1,71 @@
 "use client";
-import { Button, Form, Row, Col } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { Button, Col, Form, Row } from "react-bootstrap";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
-import { DTClient } from "@/types/drum-tracer/client.type";
-import {
-  dtClientFormSchema,
-  DTClientFormValues,
-} from "@/types/schemas/dt-client.schema";
-import { createClient, updateClient } from "@/services/drum-tracer/client.service";
+import { Client } from "@/types/client.type";
+import { clientFormSchema, ClientFormValues } from "@/types/schemas/client.schema";
+import { createClient, updateClient } from "@/services/client.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
-
-const COUNTRIES = ["Netherlands", "Germany", "Belgium", "Bahrain", "United Arab Emirates", "Saudi Arabia"];
+import RHFPhoneNumberInput from "@/components/ui/PhoneNumberInput/RHFPhoneNumberInput";
+import { CountrySelect } from "@/components/ui/country-select/CountrySelect";
+import { COUNTRY_LIST } from "@/assets/data/country-list";
 
 interface ClientFormProps {
-  item?: DTClient;
+  item?: Client;
   onCancel: () => void;
   onSuccess: () => void;
 }
 
-export const ClientForm = ({ item: client, onCancel, onSuccess }: ClientFormProps) => {
+export const ClientForm = ({
+  item: client,
+  onCancel,
+  onSuccess,
+}: ClientFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!client;
   const { showNotification } = useNotificationContext();
 
-  const form = useForm<DTClientFormValues>({
-    resolver: zodResolver(dtClientFormSchema),
+  const form = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
     defaultValues: {
       name: client?.name || "",
-      contact_person: client?.contact_person || "",
       email: client?.email || "",
+      contact_person: client?.contact_person || "",
       phone: client?.phone || "",
       address: client?.address || "",
       city: client?.city || "",
-      postal_code: client?.postal_code || "",
       state: client?.state || "",
-      country: client?.country || "Netherlands",
+      country: client?.country || "",
+      postal_code: client?.postal_code || "",
+      is_active: client?.is_active ?? true,
     },
   });
 
-  const mutation = useMutation<unknown, NormalizedError, DTClientFormValues>({
+  const mutation = useMutation<unknown, NormalizedError, ClientFormValues>({
     mutationFn: (payload) =>
-      isEdit && client?.id ? updateClient(client.id, payload) : createClient(payload),
+      isEdit && client?.id
+        ? updateClient(client.id, payload)
+        : createClient(payload),
     onSuccess: () => {
       showNotification({
-        message: isEdit ? "Client updated successfully" : "Client created successfully",
+        message: isEdit
+          ? "Client updated successfully"
+          : "Client created successfully",
         variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["dt-clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
       onSuccess();
     },
     onError: (error) => {
-      showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      showNotification({
+        message: error.message || "Something went wrong!",
+        variant: "danger",
+      });
+      applyServerErrors(error, form.setError);
     },
   });
 
@@ -107,14 +119,23 @@ export const ClientForm = ({ item: client, onCancel, onSuccess }: ClientFormProp
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>Phone</Form.Label>
-            <Form.Control {...form.register("phone")} placeholder="Enter phone number" />
+            <RHFPhoneNumberInput
+              name="phone"
+              control={form.control}
+              label="Phone"
+              placeholder="Enter phone number"
+              defaultCountry="NL"
+              size={"lg"}
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Address</Form.Label>
-            <Form.Control {...form.register("address")} placeholder="Enter street address" />
+            <Form.Control
+              {...form.register("address")}
+              placeholder="Enter street address"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
@@ -125,28 +146,60 @@ export const ClientForm = ({ item: client, onCancel, onSuccess }: ClientFormProp
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>Postal Code</Form.Label>
-            <Form.Control {...form.register("postal_code")} placeholder="Enter postal code" />
+            <Form.Label>State / Province</Form.Label>
+            <Form.Control
+              {...form.register("state")}
+              placeholder="Enter state or province"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>
-              Country <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Select {...form.register("country")}>
-              {COUNTRIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Form.Select>
+            <Form.Label>Postal Code</Form.Label>
+            <Form.Control
+              {...form.register("postal_code")}
+              placeholder="Enter postal code"
+            />
           </Form.Group>
         </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Country</Form.Label>
+            <Controller
+              name="country"
+              control={form.control}
+              defaultValue={form.getValues("country")}
+              render={({ field }) => (
+                <CountrySelect
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select country"
+                  countries={COUNTRY_LIST || []}
+                />
+              )}
+            />
+          </Form.Group>
+        </Col>
+        {isEdit && (
+          <Col md={6}>
+            <Form.Group className="mb-3 d-flex align-items-end pb-2">
+              <Form.Check
+                type="switch"
+                id="client-is-active"
+                label="Active"
+                {...form.register("is_active")}
+              />
+            </Form.Group>
+          </Col>
+        )}
       </Row>
 
       <div className="d-flex justify-content-end gap-2">
-        <Button variant="outline-secondary" onClick={onCancel} disabled={mutation.isPending}>
+        <Button
+          variant="outline-secondary"
+          onClick={onCancel}
+          disabled={mutation.isPending}
+        >
           Cancel
         </Button>
         <Button variant="primary" type="submit" disabled={mutation.isPending}>

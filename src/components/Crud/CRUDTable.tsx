@@ -10,7 +10,7 @@ import ColumnSelector, { ColumnOption } from "../ui/Table/ColumnSelector";
 import React, { useMemo, useState } from "react";
 
 export const CRUDTable = <
-  T extends { id: number; deleted_at?: string | null },
+  T extends { id: number | string; deleted_at?: string | null },
   TFilters extends BaseFilter = BaseFilter,
 >({
   data,
@@ -56,9 +56,12 @@ export const CRUDTable = <
   >(null);
 
   // ── work out what kind of rows are selected ─────────────────────────────
-  const selectedRowIds = Object.keys(state.rowSelection).map(Number);
+  // rowSelection is keyed by String(row.id) (see ui/Table's getRowId), so
+  // ids must be compared as strings here — numeric coercion (the old
+  // `.map(Number)`) silently produced NaN for any UUID-style id.
+  const selectedRowIds = Object.keys(state.rowSelection);
   const selectedRowIdSet = new Set(selectedRowIds);
-  const selectedRows = data.filter((row) => selectedRowIdSet.has(row.id));
+  const selectedRows = data.filter((row) => selectedRowIdSet.has(String(row.id)));
   const deletedSelectedIds = selectedRows
     .filter((r) => r.deleted_at !== null && r.deleted_at !== undefined)
     .map((r) => r.id);

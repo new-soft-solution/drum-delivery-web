@@ -4,7 +4,6 @@ import NextTopLoader from "nextjs-toploader";
 
 import type { ChildrenType } from "@/types/component-props.type";
 import AppProvidersWrapper from "@/components/wrappers/AppProvidersWrapper";
-import AppShell from "@/components/layout/AppShell";
 import logoSm from "@/assets/images/logo-dark.png";
 
 import "@/assets/scss/app.scss";
@@ -76,12 +75,10 @@ export default async function RootLayout({ children }: ChildrenType) {
             priority
           />
         </div>
-        <NextTopLoader color="#203975" showSpinner={false} />
+        <NextTopLoader color="#008071" showSpinner={false} />
         <div id="__next_splash">
           <NextIntlClientProvider messages={messages}>
-            <AppProvidersWrapper>
-              {children}
-            </AppProvidersWrapper>
+            <AppProvidersWrapper>{children}</AppProvidersWrapper>
           </NextIntlClientProvider>
         </div>
       </body>

@@ -15,6 +15,7 @@ import {
 } from "@/services/drum-tracer/truck-delivery.service";
 import { getShipments } from "@/services/drum-tracer/shipment.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 interface TruckDeliveryFormProps {
@@ -60,6 +61,7 @@ export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: Truck
     },
     onError: (error) => {
       showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      applyServerErrors(error, form.setError);
     },
   });
 

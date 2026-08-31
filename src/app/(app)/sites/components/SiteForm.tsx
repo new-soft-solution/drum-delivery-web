@@ -8,6 +8,7 @@ import { DTSite } from "@/types/drum-tracer/site.type";
 import { dtSiteFormSchema, DTSiteFormValues } from "@/types/schemas/dt-site.schema";
 import { createSite, updateSite } from "@/services/drum-tracer/site.service";
 import { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 const COUNTRIES = ["Netherlands", "Germany", "Belgium", "Bahrain", "United Arab Emirates", "Saudi Arabia"];
@@ -50,6 +51,7 @@ export const SiteForm = ({ item: site, onCancel, onSuccess }: SiteFormProps) => 
     },
     onError: (error) => {
       showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      applyServerErrors(error, form.setError);
     },
   });
 

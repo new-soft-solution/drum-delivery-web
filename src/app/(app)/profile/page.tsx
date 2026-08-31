@@ -1,27 +1,32 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-
-interface Profile {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  role: string;
-  username: string;
-}
+import Avatar from "@/components/ui/Avatar/Avatar";
+import { getMe } from "@/services/auth/auth.service";
+import { useSessionStore } from "@/store/useSessionStore";
+import type { SessionUser } from "@/types/session.type";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const cachedUser = useSessionStore((s) => s.session?.user);
+  const updateUser = useSessionStore((s) => s.updateUser);
+  const [profile, setProfile] = useState<SessionUser | null>(cachedUser ?? null);
 
   useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then(setProfile);
-  }, []);
+    getMe()
+      .then((fresh) => {
+        setProfile(fresh);
+        updateUser(fresh);
+      })
+      .catch(() => {
+        // Keep showing the cached (login-time) snapshot if the live fetch
+        // fails — better than a blank screen.
+      });
+  }, [updateUser]);
 
-  const fullName = profile ? `${profile.firstName} ${profile.lastName}`.trim() : "";
+  const fullName =
+    profile && (profile.first_name || profile.last_name)
+      ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
+      : profile?.email || "";
 
   return (
     <>
@@ -36,39 +41,27 @@ export default function ProfilePage() {
             <>
               <span
                 style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.15)",
                   border: "3px solid rgba(255,255,255,0.5)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 30,
-                  fontWeight: 800,
+                  borderRadius: "50%",
+                  display: "inline-flex",
+                  padding: 2,
                 }}
               >
-                {fullName
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
+                <Avatar name={fullName || profile.email || "?"} size={78} imageSrc={profile.avatar ?? undefined} />
               </span>
               <div className="flex-grow-1">
-                <h3 className="fw-bold mb-1">{fullName}</h3>
+                <h3 className="fw-bold mb-1">{fullName || profile.email}</h3>
                 <div className="opacity-90 d-flex align-items-center gap-2 flex-wrap small">
-                  <span className="badge bg-white text-dark fw-semibold">{profile.role}</span>
-                  <span className="d-flex align-items-center gap-1">
-                    <IconifyIcon icon="ri:mail-line" /> {profile.email}
-                  </span>
+                  {profile.role && (
+                    <span className="badge bg-white text-dark fw-semibold text-capitalize">{profile.role}</span>
+                  )}
+                  {profile.email && (
+                    <span className="d-flex align-items-center gap-1">
+                      <IconifyIcon icon="ri:mail-line" /> {profile.email}
+                    </span>
+                  )}
                 </div>
               </div>
-              <Link href="/profile/edit" className="btn btn-light fw-semibold">
-                <IconifyIcon icon="ri:edit-line" className="me-1" />
-                Edit Profile
-              </Link>
             </>
           ) : (
             <div className="placeholder-glow w-100">
@@ -78,56 +71,51 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="row g-3">
-        <div className="col-md-7">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body p-4">
-              <h6 className="fw-bold mb-3">Account Information</h6>
-              {!profile ? (
-                <p className="text-muted small">Loading...</p>
-              ) : (
-                <div className="row g-3">
-                  <div className="col-sm-6">
-                    <div className="text-muted small">First name</div>
-                    <div className="fw-semibold">{profile.firstName}</div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="text-muted small">Last name</div>
-                    <div className="fw-semibold">{profile.lastName || "—"}</div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="text-muted small">Email</div>
-                    <div className="fw-semibold">{profile.email}</div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="text-muted small">Phone</div>
-                    <div className="fw-semibold">{profile.phone || "—"}</div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="text-muted small">Username</div>
-                    <div className="fw-semibold">{profile.username}</div>
-                  </div>
-                  <div className="col-sm-6">
-                    <div className="text-muted small">Role</div>
-                    <div className="fw-semibold">{profile.role}</div>
-                  </div>
+      <div className="card border-0 shadow-sm">
+        <div className="card-body p-4">
+          <h6 className="fw-bold mb-3">Account Information</h6>
+          {!profile ? (
+            <p className="text-muted small">Loading...</p>
+          ) : (
+            <div className="row g-3">
+              {profile.first_name !== undefined && (
+                <div className="col-sm-6">
+                  <div className="text-muted small">First name</div>
+                  <div className="fw-semibold">{profile.first_name || "—"}</div>
+                </div>
+              )}
+              {profile.last_name !== undefined && (
+                <div className="col-sm-6">
+                  <div className="text-muted small">Last name</div>
+                  <div className="fw-semibold">{profile.last_name || "—"}</div>
+                </div>
+              )}
+              <div className="col-sm-6">
+                <div className="text-muted small">Email</div>
+                <div className="fw-semibold">{profile.email || "—"}</div>
+              </div>
+              {profile.role !== undefined && (
+                <div className="col-sm-6">
+                  <div className="text-muted small">Role</div>
+                  <div className="fw-semibold text-capitalize">{profile.role || "—"}</div>
+                </div>
+              )}
+              {profile.is_active !== undefined && (
+                <div className="col-sm-6">
+                  <div className="text-muted small">Status</div>
+                  <div className="fw-semibold">{profile.is_active ? "Active" : "Inactive"}</div>
                 </div>
               )}
             </div>
-          </div>
-        </div>
-        <div className="col-md-5">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body p-4">
-              <h6 className="fw-bold mb-3">Security</h6>
-              <p className="text-muted small mb-3">
-                Keep your account secure by using a strong, unique password.
-              </p>
-              <Link href="/profile/change-password" className="btn btn-outline-secondary w-100">
-                <IconifyIcon icon="ri:lock-password-line" className="me-1" />
-                Change Password
-              </Link>
-            </div>
+          )}
+          <div className="alert alert-secondary small mt-4 mb-0 d-flex align-items-start gap-2">
+            <IconifyIcon icon="ri:information-line" className="mt-1" />
+            <span>
+              This view reflects whatever <code>GET /api/auth/me/</code> actually returns — the backend&apos;s API
+              docs don&apos;t specify its response shape, so fields not present just won&apos;t show here. Editing
+              your profile and changing your password aren&apos;t available yet — the backend doesn&apos;t expose
+              endpoints for either.
+            </span>
           </div>
         </div>
       </div>

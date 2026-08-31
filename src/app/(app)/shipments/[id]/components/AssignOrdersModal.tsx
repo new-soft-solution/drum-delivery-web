@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Form, InputGroup } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getOrders } from "@/services/drum-tracer/order.service";
-import { assignOrdersToShipment } from "@/services/drum-tracer/shipment.service";
+import { getOrders, updateOrder } from "@/services/order.service";
+import { getShipmentOrderIds, assignOrdersToShipment } from "@/services/drum-tracer/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
 
@@ -17,28 +17,48 @@ export const AssignOrdersModal = ({ show, onHide, shipmentId }: AssignOrdersModa
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dt-orders-unassigned", search],
-    queryFn: () => getOrders({ assignment: "unassigned", search, page_size: 100 }),
+  // The real /api/orders/ endpoint has no "assignment" filter (that
+  // concept doesn't exist server-side — Shipments are still local/mock).
+  // Instead: fetch real orders (optionally search-filtered), then exclude
+  // ones already linked to *this* shipment locally, and treat
+  // ASSIGNED_TO_SHIPMENT as a heuristic for "probably already spoken for".
+  const { data: linkedIds } = useQuery({
+    queryKey: ["shipment-order-ids", shipmentId],
+    queryFn: () => getShipmentOrderIds(shipmentId),
     enabled: show,
   });
 
+  const { data, isLoading } = useQuery({
+    queryKey: ["orders-for-assign", search],
+    queryFn: () => getOrders({ search }),
+    enabled: show,
+  });
+
+  const alreadyLinked = new Set(linkedIds?.results ?? []);
+  const candidates = (data?.results ?? []).filter(
+    (o) => !alreadyLinked.has(o.id) && o.status !== "ASSIGNED_TO_SHIPMENT",
+  );
+
   const mutation = useMutation({
-    mutationFn: () => assignOrdersToShipment(shipmentId, selected),
+    mutationFn: async () => {
+      await assignOrdersToShipment(shipmentId, selected);
+      // Best-effort: reflect the link on the real order too.
+      await Promise.allSettled(selected.map((id) => updateOrder(id, { status: "ASSIGNED_TO_SHIPMENT" })));
+    },
     onSuccess: () => {
       showNotification({ message: `${selected.length} order(s) assigned`, variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["dt-shipment-orders", shipmentId] });
-      queryClient.invalidateQueries({ queryKey: ["dt-orders-unassigned"] });
-      queryClient.invalidateQueries({ queryKey: ["dt-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["shipment-order-ids", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["orders-for-assign"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSelected([]);
       onHide();
     },
     onError: () => showNotification({ message: "Failed to assign orders", variant: "danger" }),
   });
 
-  const toggle = (id: number) =>
+  const toggle = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
@@ -49,7 +69,7 @@ export const AssignOrdersModal = ({ show, onHide, shipmentId }: AssignOrdersModa
       <ModalBody>
         <InputGroup className="mb-3">
           <Form.Control
-            placeholder="Search orders by number or client..."
+            placeholder="Search orders by number or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -57,11 +77,11 @@ export const AssignOrdersModal = ({ show, onHide, shipmentId }: AssignOrdersModa
 
         {isLoading ? (
           <Spinner />
-        ) : !data || data.results.length === 0 ? (
-          <p className="text-muted text-center py-4">No unassigned orders available.</p>
+        ) : candidates.length === 0 ? (
+          <p className="text-muted text-center py-4">No available orders to assign.</p>
         ) : (
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {data.results.map((o) => (
+            {candidates.map((o) => (
               <Form.Check
                 key={o.id}
                 type="checkbox"
@@ -71,7 +91,8 @@ export const AssignOrdersModal = ({ show, onHide, shipmentId }: AssignOrdersModa
                 onChange={() => toggle(o.id)}
                 label={
                   <span>
-                    <b>{o.po_number}</b> <span className="text-muted small">· {o.client_name}</span>
+                    <b>{o.order_number}</b>{" "}
+                    <span className="text-muted small">· {o.client_details?.name ?? "Unknown"}</span>
                   </span>
                 }
               />

@@ -49,6 +49,7 @@ export const DetailsModal = <T extends object | number>({
   const [currentMode, setCurrentMode] = useState<CURDModalMode>(mode);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentMode(mode);
   }, [mode]);
 

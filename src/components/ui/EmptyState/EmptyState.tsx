@@ -27,14 +27,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
           width: 64,
           height: 64,
           borderRadius: "50%",
-          background: "rgba(32, 57, 117, 0.08)",
+          background: "rgba(0, 128, 113, 0.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           margin: "0 auto 1rem",
         }}
       >
-        <IconifyIcon icon={icon} width={28} height={28} style={{ color: "#203975" }} />
+        <IconifyIcon icon={icon} width={28} height={28} style={{ color: "#008071" }} />
       </div>
       <h6 className="mb-1 fw-semibold">{title}</h6>
       {description && <p className="text-muted small mb-3">{description}</p>}

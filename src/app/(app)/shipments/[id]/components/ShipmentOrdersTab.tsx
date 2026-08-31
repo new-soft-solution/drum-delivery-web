@@ -3,29 +3,53 @@ import { useState } from "react";
 import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { getShipmentOrders, unassignOrderFromShipment } from "@/services/drum-tracer/shipment.service";
+import { getShipmentOrderIds, unassignOrderFromShipment } from "@/services/drum-tracer/shipment.service";
+import { getOrder, updateOrder } from "@/services/order.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Spinner from "@/components/Spinner";
 import { AssignOrdersModal } from "./AssignOrdersModal";
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 
+const STATUS_LABELS: Record<string, string> = {
+  CREATED: "Created",
+  ASSIGNED_TO_SHIPMENT: "Assigned to Shipment",
+  COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
+};
+
 export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dt-shipment-orders", shipmentId],
-    queryFn: () => getShipmentOrders(shipmentId),
+  const { data: linkData, isLoading: idsLoading } = useQuery({
+    queryKey: ["shipment-order-ids", shipmentId],
+    queryFn: () => getShipmentOrderIds(shipmentId),
   });
 
+  const orderIds = linkData?.results ?? [];
+  const { data: orders, isLoading: ordersLoading } = useQuery({
+    queryKey: ["shipment-orders-detail", shipmentId, orderIds],
+    queryFn: () => Promise.all(orderIds.map((id) => getOrder(id))),
+    enabled: orderIds.length > 0,
+  });
+
+  const isLoading = idsLoading || (orderIds.length > 0 && ordersLoading);
+
   const removeMutation = useMutation({
-    mutationFn: (orderId: number) => unassignOrderFromShipment(shipmentId, orderId),
+    mutationFn: async (orderId: string) => {
+      await unassignOrderFromShipment(shipmentId, orderId);
+      try {
+        await updateOrder(orderId, { status: "CREATED" });
+      } catch {
+        // best-effort only
+      }
+    },
     onSuccess: () => {
       showNotification({ message: "Order removed from shipment", variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["dt-shipment-orders", shipmentId] });
-      queryClient.invalidateQueries({ queryKey: ["dt-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["shipment-order-ids", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 
@@ -40,7 +64,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
 
       {isLoading ? (
         <Spinner />
-      ) : !data || data.results.length === 0 ? (
+      ) : orderIds.length === 0 ? (
         <EmptyState
           icon="ri:clipboard-line"
           title="No orders linked yet"
@@ -52,21 +76,21 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
         <Table responsive hover>
           <thead>
             <tr>
-              <th>P.O Number</th>
+              <th>Order Number</th>
               <th>Client</th>
               <th>Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {data.results.map((o) => (
-              <tr key={o!.id}>
+            {(orders ?? []).map((o) => (
+              <tr key={o.id}>
                 <td className="fw-bold">
-                  <Link href={`/orders`}>{o!.po_number}</Link>
+                  <Link href="/orders">{o.order_number}</Link>
                 </td>
-                <td>{o!.client_name}</td>
+                <td>{o.client_details?.name ?? "Unknown"}</td>
                 <td>
-                  <StatusBadge status={o!.status} />
+                  <StatusBadge status={STATUS_LABELS[o.status] ?? o.status} />
                 </td>
                 <td>
                   <Button
@@ -74,7 +98,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
                     size="sm"
                     className="text-danger"
                     disabled={removeMutation.isPending}
-                    onClick={() => removeMutation.mutate(o!.id)}
+                    onClick={() => removeMutation.mutate(o.id)}
                   >
                     Remove
                   </Button>
