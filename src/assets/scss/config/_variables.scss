@@ -999,21 +999,21 @@ $input-height-border: calc(
 $input-height-inner: add($input-line-height * 1em, $input-padding-y * 2);
 $input-height-inner-half: add($input-line-height * 0.5em, $input-padding-y);
 $input-height-inner-quarter: add(
-                $input-line-height * 0.25em,
-                $input-padding-y * 0.5
+        $input-line-height * 0.25em,
+        $input-padding-y * 0.5
 );
 
 $input-height: add(
-                $input-line-height * 1em,
-                add($input-padding-y * 2, $input-height-border, false)
+        $input-line-height * 1em,
+        add($input-padding-y * 2, $input-height-border, false)
 );
 $input-height-sm: add(
-                $input-line-height * 1em,
-                add($input-padding-y-sm * 2, $input-height-border, false)
+        $input-line-height * 1em,
+        add($input-padding-y-sm * 2, $input-height-border, false)
 );
 $input-height-lg: add(
-                $input-line-height * 1em,
-                add($input-padding-y-lg * 2, $input-height-border, false)
+        $input-line-height * 1em,
+        add($input-padding-y-lg * 2, $input-height-border, false)
 );
 
 $input-transition: border-color 0.15s ease-in-out,
@@ -1305,8 +1305,8 @@ $navbar-light-disabled-color: rgba(var(--#{$prefix}emphasis-color-rgb), 0.3);
 $navbar-light-icon-color: rgba($body-color, 0.75);
 $navbar-light-toggler-icon-bg: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'><path stroke='#{$navbar-light-icon-color}' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/></svg>");
 $navbar-light-toggler-border-color: rgba(
-                var(--#{$prefix}emphasis-color-rgb),
-                0.15
+        var(--#{$prefix}emphasis-color-rgb),
+        0.15
 );
 $navbar-light-brand-color: $navbar-light-active-color;
 $navbar-light-brand-hover-color: $navbar-light-active-color;
@@ -1409,7 +1409,7 @@ $pagination-focus-outline: 0;
 $pagination-hover-color: var(--#{$prefix}link-hover-color);
 $pagination-hover-bg: var(--#{$prefix}tertiary-bg);
 $pagination-hover-border-color: var(
-                --#{$prefix}border-color
+        --#{$prefix}border-color
 ); // Todo in v6: remove this?
 
 $pagination-active-color: $component-active-color;
@@ -1471,8 +1471,8 @@ $accordion-border-width: var(--#{$prefix}border-width);
 $accordion-border-color: var(--#{$prefix}border-color);
 $accordion-border-radius: var(--#{$prefix}border-radius);
 $accordion-inner-border-radius: subtract(
-                $accordion-border-radius,
-                $accordion-border-width
+        $accordion-border-radius,
+        $accordion-border-width
 );
 
 $accordion-body-padding-y: $accordion-padding-y;
@@ -1613,8 +1613,8 @@ $modal-content-border-color: var(--#{$prefix}border-color);
 $modal-content-border-width: var(--#{$prefix}border-width);
 $modal-content-border-radius: var(--#{$prefix}border-radius-lg);
 $modal-content-inner-border-radius: subtract(
-                $modal-content-border-radius,
-                $modal-content-border-width
+        $modal-content-border-radius,
+        $modal-content-border-width
 );
 $modal-content-box-shadow-xs: $box-shadow-sm;
 $modal-content-box-shadow-sm-up: $box-shadow;
@@ -1806,7 +1806,7 @@ $btn-close-padding-x: 0.25em;
 $btn-close-padding-y: $btn-close-padding-x;
 $btn-close-color: #a4abc1;
 // $btn-close-bg:               url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='#{$btn-close-color}'><path d='M.293.293a1 1 0 0 1 1.414 0L8 6.586 14.293.293a1 1 0 1 1 1.414 1.414L9.414 8l6.293 6.293a1 1 0 0 1-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L6.586 8 .293 1.707a1 1 0 0 1 0-1.414z'/></svg>");
-$btn-close-bg: url("data:image/svg+xml,<svg width='48px' height='48px' stroke-width='1.7' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' color='#{$btn-close-color}'><path d='M6.75827 17.2426L12.0009 12M17.2435 6.75736L12.0009 12M12.0009 12L6.75827 6.75736M12.0009 12L17.2435 17.2426' stroke='#387561' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'></path></svg>");
+$btn-close-bg: url("data:image/svg+xml,<svg width='48px' height='48px' stroke-width='1.7' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg' color='#{$btn-close-color}'><path d='M6.75827 17.2426L12.0009 12M17.2435 6.75736L12.0009 12M12.0009 12L6.75827 6.75736M12.0009 12L17.2435 17.2426' stroke='#223b76' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'></path></svg>");
 $btn-close-focus-shadow: $focus-ring-box-shadow;
 $btn-close-opacity: 1;
 $btn-close-hover-opacity: 0.75;

@@ -2,25 +2,17 @@
 // Mirrors the shape a real Django-style backend (results/count, numeric ids)
 // would return, so it plugs straight into the existing useCRUDTable /
 // CRUDTable / DetailsModal components unmodified.
+//
+// Clients and Orders used to live here too, but now come from the real
+// backend (drum-delivery-api.onrender.com) via src/services/client.service.ts
+// and src/services/order.service.ts — see README.md. Shipments, Drums,
+// Sites, and Truck Deliveries have no real backend endpoint yet, so they
+// stay here. A Shipment's `order_ids` now holds real order UUIDs (strings)
+// rather than referencing anything in this file.
 
-export type OrderStatus = "Created" | "Assigned" | "Completed";
 export type ShipmentStatus = "Created" | "In Transit" | "Arrived" | "Delivered";
 export type DrumStatus = "Available" | "In Transit" | "Missing";
 export type TruckStatus = "Scheduled" | "In Transit" | "Delivered" | "Overdue";
-
-export interface DTClient {
-  id: number;
-  name: string;
-  contact_person: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  postal_code?: string;
-  state?: string;
-  country: string;
-  created_at: string;
-}
 
 export interface DTSite {
   id: number;
@@ -32,15 +24,6 @@ export interface DTSite {
   country: string;
   contact_person?: string;
   contact_phone?: string;
-  created_at: string;
-}
-
-export interface DTOrder {
-  id: number;
-  po_number: string;
-  client_id: number;
-  description?: string;
-  status: OrderStatus;
   created_at: string;
 }
 
@@ -66,7 +49,7 @@ export interface DTShipment {
   destination_site_id: number;
   expected_arrival: string;
   status: ShipmentStatus;
-  order_ids: number[];
+  order_ids: string[]; // real Order UUIDs from the live backend
   drum_ids: number[];
   created_at: string;
 }
@@ -86,9 +69,7 @@ export interface DTTruckDelivery {
 
 interface Store {
   nextId: Record<string, number>;
-  clients: DTClient[];
   sites: DTSite[];
-  orders: DTOrder[];
   drums: DTDrum[];
   shipments: DTShipment[];
   truckDeliveries: DTTruckDelivery[];
@@ -96,20 +77,6 @@ interface Store {
 
 function seed(): Store {
   const now = new Date().toISOString();
-
-  const client: DTClient = {
-    id: 1,
-    name: "TenneT TSO GMBH",
-    contact_person: "Jacqueline",
-    email: "jacqueline.schmidt@tennet.eu",
-    phone: "+49921507404428",
-    address: "Bernecker",
-    city: "Bayreuth",
-    postal_code: "1105 BG",
-    state: "",
-    country: "Germany",
-    created_at: now,
-  };
 
   const site: DTSite = {
     id: 1,
@@ -121,15 +88,6 @@ function seed(): Store {
     country: "Germany",
     contact_person: "Dennis Pieper",
     contact_phone: "0151 20355183",
-    created_at: now,
-  };
-
-  const order: DTOrder = {
-    id: 1,
-    po_number: "4500101248",
-    client_id: 1,
-    description: "Supply of ACSR Conductor",
-    status: "Assigned",
     created_at: now,
   };
 
@@ -166,16 +124,14 @@ function seed(): Store {
     destination_site_id: 1,
     expected_arrival: "2026-08-19",
     status: "In Transit",
-    order_ids: [1],
+    order_ids: [], // no real order UUIDs known ahead of time — link one via "Assign Orders"
     drum_ids: [],
     created_at: now,
   };
 
   return {
-    nextId: { clients: 2, sites: 2, orders: 2, drums: drums.length + 1, shipments: 2, truckDeliveries: 1 },
-    clients: [client],
+    nextId: { sites: 2, drums: drums.length + 1, shipments: 2, truckDeliveries: 1 },
     sites: [site],
-    orders: [order],
     drums,
     shipments: [shipment],
     truckDeliveries: [],

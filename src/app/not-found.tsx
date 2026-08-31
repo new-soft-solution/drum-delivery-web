@@ -17,7 +17,9 @@ const NotFound = () => {
                 <Card>
                   <CardBody className="p-0 bg-black auth-header-box rounded-top">
                     <div className="text-center p-3">
+                      <Link href="/" className="logo logo-admin">
                         <LogoBox />
+                      </Link>
                       <h4 className="mt-3 mb-1 fw-semibold text-white fs-18">
                         Oops! Sorry page does not found
                       </h4>

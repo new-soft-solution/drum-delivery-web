@@ -12,7 +12,7 @@ export interface DTShipment {
   destination_site_name?: string;
   expected_arrival: string;
   status: ShipmentStatus;
-  order_ids: number[];
+  order_ids: string[];
   drum_ids: number[];
   created_at: string;
 }

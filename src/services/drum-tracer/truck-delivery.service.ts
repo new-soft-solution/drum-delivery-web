@@ -1,4 +1,5 @@
 import { dtApi } from "./client";
+import { buildQueryParams } from "@/utils/build-query-params";
 import type { DeleteProps } from "@/types/global.type";
 import type {
   DTTruckDelivery,
@@ -10,12 +11,7 @@ import type { DTTruckDeliveryFormValues } from "@/types/schemas/dt-truck-deliver
 export const getTruckDeliveries = async (
   params: DTTruckDeliveryQueryParams = {},
 ): Promise<DTTruckDeliveryListResponse> => {
-  const qs = new URLSearchParams(
-    Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-      if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
-      return acc;
-    }, {}),
-  ).toString();
+  const qs = buildQueryParams(params).toString();
   return dtApi.get<DTTruckDeliveryListResponse>(`truck-deliveries?${qs}`);
 };
 

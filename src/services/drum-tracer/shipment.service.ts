@@ -1,4 +1,5 @@
 import { dtApi } from "./client";
+import { buildQueryParams } from "@/utils/build-query-params";
 import type { DeleteProps } from "@/types/global.type";
 import type {
   DTShipment,
@@ -10,12 +11,7 @@ import type { DTShipmentFormValues } from "@/types/schemas/dt-shipment.schema";
 export const getShipments = async (
   params: DTShipmentQueryParams = {},
 ): Promise<DTShipmentListResponse> => {
-  const qs = new URLSearchParams(
-    Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-      if (v !== undefined && v !== null && v !== "") acc[k] = String(v);
-      return acc;
-    }, {}),
-  ).toString();
+  const qs = buildQueryParams(params).toString();
   return dtApi.get<DTShipmentListResponse>(`shipments?${qs}`);
 };
 
@@ -39,12 +35,16 @@ export const assignDrumsToShipment = (id: number, drumIds: number[]) =>
 export const unassignDrumFromShipment = (id: number, drumId: number) =>
   dtApi.delete(`shipments/${id}/drums?drumId=${drumId}`);
 
-export const getShipmentOrders = (id: number) =>
-  dtApi.get<{
-    results: (import("@/types/drum-tracer/order.type").DTOrder & { client_name?: string })[];
-    count: number;
-  }>(`shipments/${id}/orders`);
-export const assignOrdersToShipment = (id: number, orderIds: number[]) =>
+// Order linking: a Shipment here only stores real Order UUIDs
+// (`order_ids: string[]`) — the actual Order records themselves now live on
+// the real backend (see src/services/order.service.ts), not in this mock
+// store. These two calls only manage the local link; fetching the linked
+// orders' real details and keeping their `status` in sync happens
+// client-side in ShipmentOrdersTab / AssignOrdersModal, which already have
+// access to the real order.service.ts functions.
+export const getShipmentOrderIds = (id: number) =>
+  dtApi.get<{ results: string[]; count: number }>(`shipments/${id}/orders`);
+export const assignOrdersToShipment = (id: number, orderIds: string[]) =>
   dtApi.post(`shipments/${id}/orders`, { order_ids: orderIds });
-export const unassignOrderFromShipment = (id: number, orderId: number) =>
+export const unassignOrderFromShipment = (id: number, orderId: string) =>
   dtApi.delete(`shipments/${id}/orders?orderId=${orderId}`);

@@ -41,7 +41,7 @@ const VARIANT_META: Record<
   string,
   { icon: string; accent: string; textOnBg: boolean }
 > = {
-  success: { icon: "mdi:check-circle", accent: "#16a34a", textOnBg: true },
+  success: { icon: "mdi:check-circle", accent: "#203975", textOnBg: true },
   danger: { icon: "mdi:alert-circle", accent: "#dc2626", textOnBg: true },
   warning: { icon: "mdi:alert", accent: "#d97706", textOnBg: false },
   info: { icon: "mdi:information", accent: "#0ea5e9", textOnBg: true },
@@ -86,6 +86,7 @@ function Toastr({
 
   useEffect(() => {
     if (show) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsPaused(false);
       startTimer(effectiveDelay);
     } else {
