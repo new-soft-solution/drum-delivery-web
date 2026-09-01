@@ -61,7 +61,9 @@ export const CRUDTable = <
   // `.map(Number)`) silently produced NaN for any UUID-style id.
   const selectedRowIds = Object.keys(state.rowSelection);
   const selectedRowIdSet = new Set(selectedRowIds);
-  const selectedRows = data.filter((row) => selectedRowIdSet.has(String(row.id)));
+  const selectedRows = data.filter((row) =>
+    selectedRowIdSet.has(String(row.id)),
+  );
   const deletedSelectedIds = selectedRows
     .filter((r) => r.deleted_at !== null && r.deleted_at !== undefined)
     .map((r) => r.id);
@@ -268,21 +270,7 @@ export const CRUDTable = <
               onClick={onImport}
               className="px-1"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width={24}
-                height={24}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7,10 12,15 17,10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              <IconifyIcon icon="solar:upload-bold" width={20} />
             </Button>
           )}
 

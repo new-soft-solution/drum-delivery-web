@@ -1,10 +1,10 @@
 "use client";
 import { Form } from "react-bootstrap";
-import { DTDrumFilterType } from "@/types/drum-tracer/drum.type";
+import { DrumFilterType } from "@/types/drum.type";
 
 interface FilterProps {
-  tempFilters: DTDrumFilterType;
-  onTempFilterChange: (filters: DTDrumFilterType) => void;
+  tempFilters: DrumFilterType;
+  onTempFilterChange: (filters: DrumFilterType) => void;
 }
 
 const DrumFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
@@ -15,7 +15,12 @@ const DrumFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
           <Form.Label>Status</Form.Label>
           <Form.Select
             value={tempFilters.status || ""}
-            onChange={(e) => onTempFilterChange({ ...tempFilters, status: e.target.value || undefined })}
+            onChange={(e) =>
+              onTempFilterChange({
+                ...tempFilters,
+                status: e.target.value || undefined,
+              })
+            }
           >
             <option value="">All Statuses</option>
             <option value="Available">Available</option>

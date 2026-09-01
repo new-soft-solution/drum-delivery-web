@@ -1,11 +1,19 @@
 "use client";
 import { useState } from "react";
-import { Modal, ModalHeader, ModalBody, ModalFooter, Button, Form, InputGroup } from "react-bootstrap";
+import {
+  Button,
+  Form,
+  InputGroup,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+} from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getDrums } from "@/services/drum-tracer/drum.service";
 import { assignDrumsToShipment } from "@/services/drum-tracer/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
+import { getDrums } from "@/services/drum.service";
 
 interface AssignDrumsModalProps {
   show: boolean;
@@ -13,33 +21,48 @@ interface AssignDrumsModalProps {
   shipmentId: number;
 }
 
-export const AssignDrumsModal = ({ show, onHide, shipmentId }: AssignDrumsModalProps) => {
+export const AssignDrumsModal = ({
+  show,
+  onHide,
+  shipmentId,
+}: AssignDrumsModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<number[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["dt-drums-unassigned", search],
-    queryFn: () => getDrums({ assignment: "unassigned", search, page_size: 100 }),
+    queryFn: () => getDrums({ search, page_size: 100 }),
     enabled: show,
   });
 
   const mutation = useMutation({
     mutationFn: () => assignDrumsToShipment(shipmentId, selected),
     onSuccess: () => {
-      showNotification({ message: `${selected.length} drum(s) assigned`, variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["dt-shipment-drums", shipmentId] });
+      showNotification({
+        message: `${selected.length} drum(s) assigned`,
+        variant: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["dt-shipment-drums", shipmentId],
+      });
       queryClient.invalidateQueries({ queryKey: ["dt-drums-unassigned"] });
       queryClient.invalidateQueries({ queryKey: ["dt-drums"] });
       setSelected([]);
       onHide();
     },
-    onError: () => showNotification({ message: "Failed to assign drums", variant: "danger" }),
+    onError: () =>
+      showNotification({
+        message: "Failed to assign drums",
+        variant: "danger",
+      }),
   });
 
-  const toggle = (id: number) =>
-    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggle = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
@@ -58,7 +81,9 @@ export const AssignDrumsModal = ({ show, onHide, shipmentId }: AssignDrumsModalP
         {isLoading ? (
           <Spinner />
         ) : !data || data.results.length === 0 ? (
-          <p className="text-muted text-center py-4">No available (unassigned) drums found.</p>
+          <p className="text-muted text-center py-4">
+            No available (unassigned) drums found.
+          </p>
         ) : (
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
             {data.results.map((d) => (
@@ -73,7 +98,8 @@ export const AssignDrumsModal = ({ show, onHide, shipmentId }: AssignDrumsModalP
                   <span>
                     <b>{d.drum_number}</b>{" "}
                     <span className="text-muted small">
-                      · {d.container_number} · {d.length_km} KMs · Net {d.net_weight_mt} MT
+                      · {d.container_no} · {d.length_kms} KMs · Net{" "}
+                      {d.net_weight_mt} MT
                     </span>
                   </span>
                 }
@@ -91,7 +117,9 @@ export const AssignDrumsModal = ({ show, onHide, shipmentId }: AssignDrumsModalP
           disabled={selected.length === 0 || mutation.isPending}
           onClick={() => mutation.mutate()}
         >
-          {mutation.isPending ? "Assigning..." : `Assign ${selected.length || ""} Drum(s)`}
+          {mutation.isPending
+            ? "Assigning..."
+            : `Assign ${selected.length || ""} Drum(s)`}
         </Button>
       </ModalFooter>
     </Modal>

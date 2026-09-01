@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { OrderDetails } from "./OrderDetails";
 import { OrderForm } from "./OrderForm";
 import type { NormalizedError } from "@/types/error.type";
@@ -13,6 +13,12 @@ import { CellContext } from "@tanstack/react-table";
 import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Avatar from "@/components/ui/Avatar/Avatar";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -20,6 +26,47 @@ const STATUS_LABELS: Record<string, string> = {
   COMPLETED: "Completed",
   CANCELLED: "Cancelled",
 };
+
+const EXPORT_COLUMNS: ExportColumn<Order>[] = [
+  {
+    header: "Order Number",
+    value: (o) => o.order_number,
+    xlsxWidth: 22,
+    pdfWidth: 80,
+  },
+  {
+    header: "Client",
+    value: (o) => o.client_details?.name ?? "Unknown",
+    xlsxWidth: 24,
+    pdfWidth: 90,
+  },
+  {
+    header: "Description",
+    value: (o) => o.description || "",
+    xlsxWidth: 30,
+    pdfWidth: 110,
+  },
+  {
+    header: "Quantity",
+    value: (o) =>
+      o.quantity != null ? `${o.quantity} ${o.unit ?? ""}`.trim() : "",
+    xlsxWidth: 16,
+    pdfWidth: 60,
+  },
+  {
+    header: "Status",
+    value: (o) => STATUS_LABELS[o.status] ?? o.status,
+    xlsxWidth: 20,
+    pdfWidth: 70,
+  },
+  {
+    header: "Created",
+    value: (o) =>
+      new Date(o.creation_date ?? o.created_at).toLocaleDateString(),
+    xlsxWidth: 16,
+    pdfWidth: 60,
+  },
+];
 
 export const OrderTable = () => {
   const queryClient = useQueryClient();
@@ -56,13 +103,41 @@ export const OrderTable = () => {
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
-        page_size:
-          typeof state.pagination?.pageSize === "number"
-            ? state.pagination.pageSize
-            : 10,
+        // NOTE: /api/orders/ doesn't document a page_size param (confirmed
+        // via schema.yaml — only ordering/page/search) so it isn't sent;
+        // OrderListParams doesn't include it for the same reason.
       }),
     staleTime: 1000 * 60,
   });
+
+  const rows = data?.results || [];
+
+  // NOTE: exports cover whatever page is currently loaded, not the full
+  // dataset — /api/orders/ is paginated and there's no "give me
+  // everything" endpoint to export against instead.
+  const handleExcelExport = useCallback(async () => {
+    const meta: ExportMeta = {
+      title: "Orders",
+      fileBaseName: "orders",
+      generatedAt: new Date(),
+      filtersLine: state.globalFilter
+        ? `Search: ${state.globalFilter}`
+        : undefined,
+    };
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Orders" });
+  }, [rows, state.globalFilter]);
+
+  const handlePdfExport = useCallback(async () => {
+    const meta: ExportMeta = {
+      title: "Orders",
+      fileBaseName: "orders",
+      generatedAt: new Date(),
+      filtersLine: state.globalFilter
+        ? `Search: ${state.globalFilter}`
+        : undefined,
+    };
+    await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
+  }, [rows, state.globalFilter]);
 
   const columns = useMemo(
     () => [
@@ -112,7 +187,7 @@ export const OrderTable = () => {
   return (
     <>
       <CRUDTable<Order>
-        data={data?.results || []}
+        data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
@@ -149,6 +224,10 @@ export const OrderTable = () => {
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{ entityName: "Order", tableHeader: "All Orders" }}
+        isPdfExport={rows.length > 0}
+        isExcelExport={rows.length > 0}
+        onPdfExport={handlePdfExport}
+        onExcelExport={handleExcelExport}
       />
 
       <DetailsModal<Order>

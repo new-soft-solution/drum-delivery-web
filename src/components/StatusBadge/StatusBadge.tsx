@@ -18,8 +18,10 @@ export type Tone =
   | "black"
   | "secondary";
 
-export interface StatusBadgeProps
-  extends Omit<React.HTMLAttributes<HTMLSpanElement>, "children"> {
+export interface StatusBadgeProps extends Omit<
+  React.HTMLAttributes<HTMLSpanElement>,
+  "children"
+> {
   /** Raw status text like: "paid", "unpaid", "pending", "failed" ... */
   status: string;
   /** Override the shown label (otherwise derived from `status`) */
@@ -120,6 +122,9 @@ const STATUS_TO_TONE: Record<string, Tone> = {
   missing: "red",
   overdue: "red",
   arrived: "cyan",
+  "in order": "orange",
+  "in shipment": "blue",
+  damaged: "red",
 };
 
 function prettifyLabel(s: string) {

@@ -1,43 +1,56 @@
+// src/app/api/shipments/[id]/drums/route.ts
 import { NextResponse } from "next/server";
 import { dtStore } from "@/lib/drum-tracer/store";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+// This route only manages the local link between a (mock) Shipment and
+// real Drum UUIDs — it does not know anything about the drums themselves
+// anymore (no local drum data to validate/enrich against). The client
+// fetches each linked drum's real details directly from the real backend
+// via src/services/drum.service.ts.
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  const shipmentId = Number(id);
-  const drums = dtStore.drums.filter((d) => d.shipment_id === shipmentId);
-  return NextResponse.json({ results: drums, count: drums.length });
+  const shipment = dtStore.shipments.find((s) => s.id === Number(id));
+  if (!shipment)
+    return NextResponse.json({ message: "Not found" }, { status: 404 });
+  return NextResponse.json({
+    results: shipment.drum_ids,
+    count: shipment.drum_ids.length,
+  });
 }
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  const shipmentId = Number(id);
-  const shipment = dtStore.shipments.find((s) => s.id === shipmentId);
-  if (!shipment) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  const shipment = dtStore.shipments.find((s) => s.id === Number(id));
+  if (!shipment)
+    return NextResponse.json({ message: "Not found" }, { status: 404 });
 
   const body = await request.json();
-  const drumIds: number[] = Array.isArray(body.drum_ids) ? body.drum_ids : [];
-
+  const drumIds: string[] = Array.isArray(body.drum_ids) ? body.drum_ids : [];
   shipment.drum_ids = Array.from(new Set([...shipment.drum_ids, ...drumIds]));
-  drumIds.forEach((drumId) => {
-    const drum = dtStore.drums.find((d) => d.id === drumId);
-    if (drum) drum.shipment_id = shipmentId;
-  });
 
   return NextResponse.json({ success: true, assigned: drumIds.length });
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   const { id } = await params;
-  const shipmentId = Number(id);
-  const shipment = dtStore.shipments.find((s) => s.id === shipmentId);
-  if (!shipment) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  const shipment = dtStore.shipments.find((s) => s.id === Number(id));
+  if (!shipment)
+    return NextResponse.json({ message: "Not found" }, { status: 404 });
 
   const { searchParams } = new URL(request.url);
-  const drumId = Number(searchParams.get("drumId"));
+  const drumId = searchParams.get("drumId");
 
   shipment.drum_ids = shipment.drum_ids.filter((did) => did !== drumId);
-  const drum = dtStore.drums.find((d) => d.id === drumId);
-  if (drum) drum.shipment_id = null;
 
   return NextResponse.json({ success: true });
 }

@@ -1,3 +1,4 @@
+// src/types/drum-tracer/shipment.type.ts
 import { BaseFilter } from "@/types/crud.type";
 
 export type ShipmentStatus = "Created" | "In Transit" | "Arrived" | "Delivered";
@@ -13,7 +14,7 @@ export interface DTShipment {
   expected_arrival: string;
   status: ShipmentStatus;
   order_ids: string[];
-  drum_ids: number[];
+  drum_ids: string[];
   created_at: string;
 }
 

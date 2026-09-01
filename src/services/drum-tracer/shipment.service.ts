@@ -1,3 +1,4 @@
+// src/services/drum-tracer/shipment.service.ts
 import { dtApi } from "./client";
 import { buildQueryParams } from "@/utils/build-query-params";
 import type { DeleteProps } from "@/types/global.type";
@@ -18,21 +19,28 @@ export const getShipments = async (
 export const createShipment = (data: DTShipmentFormValues) =>
   dtApi.post<DTShipment>("shipments", data);
 
-export const updateShipment = (id: number, data: Partial<DTShipmentFormValues>) =>
-  dtApi.put<DTShipment>(`shipments/${id}`, data);
+export const updateShipment = (
+  id: number,
+  data: Partial<DTShipmentFormValues>,
+) => dtApi.put<DTShipment>(`shipments/${id}`, data);
 
 export const deleteShipment = ({ id, ids }: DeleteProps) =>
   dtApi.post<void>("shipments/bulk-delete", { id, ids });
 
-export const getShipmentById = (id: number) => dtApi.get<DTShipment>(`shipments/${id}`);
+export const getShipmentById = (id: number) =>
+  dtApi.get<DTShipment>(`shipments/${id}`);
 
-export const getShipmentDrums = (id: number) =>
-  dtApi.get<{ results: import("@/types/drum-tracer/drum.type").DTDrum[]; count: number }>(
-    `shipments/${id}/drums`,
-  );
-export const assignDrumsToShipment = (id: number, drumIds: number[]) =>
+// Drum linking: mirrors getShipmentOrderIds below — a Shipment here only
+// stores real Drum UUIDs (`drum_ids: string[]`). The actual Drum records
+// live on the real backend (see src/services/drum.service.ts) now, not in
+// this mock store. Fetching the linked drums' real details and keeping
+// their `status` in sync happens client-side in ShipmentDrumsTab /
+// AssignDrumsModal, which already have access to the real drum.service.ts.
+export const getShipmentDrumIds = (id: number) =>
+  dtApi.get<{ results: string[]; count: number }>(`shipments/${id}/drums`);
+export const assignDrumsToShipment = (id: number, drumIds: string[]) =>
   dtApi.post(`shipments/${id}/drums`, { drum_ids: drumIds });
-export const unassignDrumFromShipment = (id: number, drumId: number) =>
+export const unassignDrumFromShipment = (id: number, drumId: string) =>
   dtApi.delete(`shipments/${id}/drums?drumId=${drumId}`);
 
 // Order linking: a Shipment here only stores real Order UUIDs
