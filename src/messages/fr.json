@@ -1,0 +1,6 @@
+{
+  "HomePage": {
+    "title": "Bonjour le monde!",
+    "followers": "{count, plural, =0 {No followers yet} =1 {One adept} other {# adeptes}}"
+  }
+}
