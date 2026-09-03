@@ -15,12 +15,19 @@ export default function AuthLayout({ children }: ChildrenType) {
         className="d-none d-lg-flex flex-column justify-content-between p-5"
         style={{
           width: "42%",
-          background: "linear-gradient(155deg, #003d36 0%, #008071 55%, #14b8a6 100%)",
+          background:
+            "linear-gradient(155deg, #040d23 0%, #203975 55%, #4073ec 100%)",
           color: "#fff",
         }}
       >
         <div className="d-flex align-items-center gap-2">
-          <Image src={logoLight} alt="Drum Tracer" width={36} height={36} style={{ objectFit: "contain" }} />
+          <Image
+            src={logoLight}
+            alt="Drum Tracer"
+            width={36}
+            height={36}
+            style={{ objectFit: "contain" }}
+          />
           <div>
             <div className="fw-bold">Drum Tracer</div>
             <div className="small opacity-75">Midal Cables</div>
@@ -57,10 +64,12 @@ export default function AuthLayout({ children }: ChildrenType) {
           </div>
         </div>
 
-        <div className="small opacity-60">© {new Date().getFullYear()} Midal Cables. All rights reserved.</div>
+        <div className="small opacity-60">
+          © {new Date().getFullYear()} Midal Cables. All rights reserved.
+        </div>
       </div>
 
-      <div className="flex-grow-1 d-flex align-items-center justify-content-center p-4" style={{ background: "#f6f7f9" }}>
+      <div className="flex-grow-1 d-flex align-items-center justify-content-center p-4">
         <div style={{ width: "100%", maxWidth: 400 }}>{children}</div>
       </div>
     </div>

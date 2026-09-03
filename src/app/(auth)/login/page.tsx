@@ -74,7 +74,7 @@ function LoginForm() {
           <Form.Group className="mb-3">
             <Form.Label className="small fw-semibold">Email</Form.Label>
             <div className="input-group has-validation">
-              <span className="input-group-text bg-white">
+              <span className="input-group-text">
                 <IconifyIcon icon="ri:mail-line" />
               </span>
               <Form.Control
@@ -101,7 +101,7 @@ function LoginForm() {
               </Link>
             </div>
             <div className="input-group has-validation">
-              <span className="input-group-text bg-white">
+              <span className="input-group-text">
                 <IconifyIcon icon="ri:lock-line" />
               </span>
               <Form.Control
@@ -112,7 +112,7 @@ function LoginForm() {
               />
               <button
                 type="button"
-                className="input-group-text bg-white"
+                className="input-group-text"
                 onClick={() => setShowPassword((v) => !v)}
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
