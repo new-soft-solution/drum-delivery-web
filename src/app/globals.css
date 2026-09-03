@@ -1,0 +1,162 @@
+@import "react-datepicker/dist/react-datepicker.css";
+:root,
+[data-bs-theme="light"] {
+  --rdp-bg: #ffffff;
+  --rdp-text: #212529;
+  --rdp-muted: #6c757d;
+  --rdp-border: #dee2e6;
+  --rdp-hover: #f1f3f5;
+  --rdp-selected: #22c55e;
+  --rdp-selected-text: #ffffff;
+  --rdp-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.08);
+  --rdp-today-ring: rgba(13, 110, 253, 0.35);
+  --rdp-focus-ring: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+[data-bs-theme="dark"] {
+  --rdp-bg: #1f1f1f;
+  --rdp-text: #e9ecef;
+  --rdp-muted: #adb5bd;
+  --rdp-border: #343a40;
+  --rdp-hover: #2a2a2a;
+  --rdp-selected: #22c55e;
+  --rdp-selected-text: #ffffff;
+  --rdp-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.6);
+  --rdp-today-ring: rgba(61, 139, 253, 0.45);
+  --rdp-focus-ring: 0 0 0 0.25rem rgba(61, 139, 253, 0.35);
+}
+
+.react-datepicker__close-icon:after {
+  background-color: transparent;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  border-color: white;
+}
+
+/* Base */
+.react-datepicker {
+  border: 1px solid var(--rdp-border);
+  background: var(--rdp-bg) !important;
+  color: var(--rdp-text);
+  border-radius: 0.75rem;
+  box-shadow: var(--rdp-shadow);
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.react-datepicker__header {
+  background: var(--rdp-bg);
+  border-bottom: 1px solid var(--rdp-border);
+  padding-top: 0.75rem;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: var(--rdp-text);
+  font-weight: 600;
+}
+
+.react-datepicker__day-name {
+  opacity: 0.8;
+}
+
+/* Days */
+.react-datepicker__day,
+.react-datepicker-time__header {
+  color: var(--rdp-text) !important;
+  border-radius: 0.5rem;
+  outline: none;
+}
+
+.react-datepicker__day--keyboard-selected:not(.react-datepicker__day--selected),
+.react-datepicker__day:hover {
+  background: var(--rdp-hover) !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--in-range,
+.react-datepicker__day--in-selecting-range {
+  background: var(--rdp-selected) !important;
+  color: var(--rdp-selected-text) !important;
+}
+
+/* Today ring */
+.react-datepicker__day--today {
+  position: relative;
+}
+.react-datepicker__day--today::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 1px solid var(--rdp-today-ring);
+  border-radius: 0.6rem;
+  pointer-events: none;
+}
+
+/* Time list */
+.react-datepicker__time-container {
+  border-left: 1px solid var(--rdp-border);
+  width: 95px !important;
+}
+.react-datepicker__time-box {
+  width: 95px !important;
+}
+.react-datepicker__time-list {
+  background: var(--rdp-bg);
+}
+.react-datepicker__time-list-item {
+  color: var(--rdp-text);
+  border-radius: 0.5rem;
+  margin: 2px 4px;
+}
+.react-datepicker__time-list-item:hover {
+  background: var(--rdp-hover) !important;
+}
+.react-datepicker__time-list-item--selected {
+  background: var(--rdp-selected) !important;
+  color: var(--rdp-selected-text) !important;
+}
+
+/* Popper & triangle */
+.react-datepicker__triangle {
+  display: none;
+}
+.react-datepicker-popper[data-placement^="bottom"]
+  .react-datepicker__triangle::after {
+  display: none;
+}
+
+/* Focus outlines on custom input (Bootstrap-like) */
+.react-datepicker__input-container input:focus {
+  box-shadow: var(--rdp-focus-ring);
+  border-color: var(--rdp-selected);
+}
+
+/*.brand {*/
+/*  justify-content: start !important;*/
+/*  padding-left: 28px !important;*/
+/*}*/
+/*.logo-light {*/
+/*  display: flex !important;*/
+/*}*/
+.rs-btn-link {
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.fat-dropdown {
+  position: absolute;
+}
+
+/* Local sandbox has no internet access to Google Fonts at build time;
+   fall back to a comparable system font stack instead of Be Vietnam Pro. */
+.app-font-fallback {
+  font-family:
+    "Segoe UI",
+    -apple-system,
+    BlinkMacSystemFont,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
