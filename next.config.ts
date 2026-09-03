@@ -4,7 +4,8 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin();
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // output: process.env.VERCEL ? undefined : "standalone",
+  output: undefined,
   images: {
     remotePatterns: [
       {
@@ -46,7 +47,7 @@ const nextConfig: NextConfig = {
   sassOptions: {
     silenceDeprecations: [
       "legacy-js-api",
-      "mixed-decls",
+      "if-function",
       "color-functions",
       "global-builtin",
       "import",
