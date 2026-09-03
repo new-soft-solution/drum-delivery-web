@@ -1,17 +1,18 @@
+// src/lib/drum-tracer/store.ts
 // In-memory data store for the Drum Tracer demo module.
 // Mirrors the shape a real Django-style backend (results/count, numeric ids)
 // would return, so it plugs straight into the existing useCRUDTable /
 // CRUDTable / DetailsModal components unmodified.
 //
-// Clients and Orders used to live here too, but now come from the real
-// backend (drum-delivery-api.onrender.com) via src/services/client.service.ts
-// and src/services/order.service.ts — see README.md. Shipments, Drums,
-// Sites, and Truck Deliveries have no real backend endpoint yet, so they
-// stay here. A Shipment's `order_ids` now holds real order UUIDs (strings)
-// rather than referencing anything in this file.
+// Clients, Orders, and Drums used to live here too, but now come from the
+// real backend (drum-delivery-api.onrender.com) via
+// src/services/client.service.ts, order.service.ts, and drum.service.ts —
+// see README.md. Shipments, Sites, and Truck Deliveries have no real
+// backend endpoint yet, so they stay here. A Shipment's `order_ids` and
+// `drum_ids` now hold real UUIDs (strings) rather than referencing
+// anything in this file.
 
 export type ShipmentStatus = "Created" | "In Transit" | "Arrived" | "Delivered";
-export type DrumStatus = "Available" | "In Transit" | "Missing";
 export type TruckStatus = "Scheduled" | "In Transit" | "Delivered" | "Overdue";
 
 export interface DTSite {
@@ -27,19 +28,6 @@ export interface DTSite {
   created_at: string;
 }
 
-export interface DTDrum {
-  id: number;
-  drum_number: string;
-  container_number: string;
-  length_km: number;
-  net_weight_mt: number;
-  gross_weight_mt: number;
-  status: DrumStatus;
-  shipment_id?: number | null;
-  notes?: string;
-  last_updated: string;
-}
-
 export interface DTShipment {
   id: number;
   shipment_number: string;
@@ -50,7 +38,7 @@ export interface DTShipment {
   expected_arrival: string;
   status: ShipmentStatus;
   order_ids: string[]; // real Order UUIDs from the live backend
-  drum_ids: number[];
+  drum_ids: string[]; // real Drum UUIDs from the live backend
   created_at: string;
 }
 
@@ -70,7 +58,6 @@ export interface DTTruckDelivery {
 interface Store {
   nextId: Record<string, number>;
   sites: DTSite[];
-  drums: DTDrum[];
   shipments: DTShipment[];
   truckDeliveries: DTTruckDelivery[];
 }
@@ -91,30 +78,6 @@ function seed(): Store {
     created_at: now,
   };
 
-  const containerSpecs: Record<string, { length: number; net: number; gross: number }> = {
-    CMAU9605996: { length: 1.736, net: 3.76, gross: 4.26 },
-    BMOU6976645: { length: 1.932, net: 4.15, gross: 4.65 },
-    ECMU7124905: { length: 1.932, net: 4.19, gross: 4.69 },
-  };
-  const containers = Object.keys(containerSpecs);
-  const drums: DTDrum[] = [];
-  for (let i = 0; i < 13; i++) {
-    const drumNumber = String(168 + i);
-    const container = containers[Math.floor(i / 5)] ?? containers[containers.length - 1];
-    const base = containerSpecs[container];
-    drums.push({
-      id: i + 1,
-      drum_number: drumNumber,
-      container_number: container,
-      length_km: base.length,
-      net_weight_mt: base.net,
-      gross_weight_mt: base.gross,
-      status: "Available",
-      shipment_id: null,
-      last_updated: now,
-    });
-  }
-
   const shipment: DTShipment = {
     id: 1,
     shipment_number: "SH2026001",
@@ -125,14 +88,13 @@ function seed(): Store {
     expected_arrival: "2026-08-19",
     status: "In Transit",
     order_ids: [], // no real order UUIDs known ahead of time — link one via "Assign Orders"
-    drum_ids: [],
+    drum_ids: [], // same — link real drums via "Assign Drums"
     created_at: now,
   };
 
   return {
-    nextId: { sites: 2, drums: drums.length + 1, shipments: 2, truckDeliveries: 1 },
+    nextId: { sites: 2, shipments: 2, truckDeliveries: 1 },
     sites: [site],
-    drums,
     shipments: [shipment],
     truckDeliveries: [],
   };
@@ -166,13 +128,20 @@ export function paginate<T extends object>(
   if (search) {
     const q = search.toLowerCase();
     results = results.filter((item) =>
-      searchableFields.some((field) => String(item[field] ?? "").toLowerCase().includes(q)),
+      searchableFields.some((field) =>
+        String(item[field] ?? "")
+          .toLowerCase()
+          .includes(q),
+      ),
     );
   }
 
   for (const [key, value] of params.entries()) {
-    if (["page", "page_size", "search", "ordering"].includes(key) || !value) continue;
-    results = results.filter((item) => String((item as Record<string, unknown>)[key]) === value);
+    if (["page", "page_size", "search", "ordering"].includes(key) || !value)
+      continue;
+    results = results.filter(
+      (item) => String((item as Record<string, unknown>)[key]) === value,
+    );
   }
 
   const ordering = params.get("ordering");

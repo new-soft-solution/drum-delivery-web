@@ -1,8 +1,14 @@
+// src/app/(app)/shipments/[id]/components/ShipmentDrumsTab.tsx
 "use client";
 import { useState } from "react";
 import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getShipmentDrums, unassignDrumFromShipment } from "@/services/drum-tracer/shipment.service";
+import {
+  getShipmentDrumIds,
+  unassignDrumFromShipment,
+} from "@/services/drum-tracer/shipment.service";
+import { getDrum, updateDrum } from "@/services/drum.service";
+import { DRUM_STATUS_LABELS } from "@/types/drum.type";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Spinner from "@/components/Spinner";
@@ -14,17 +20,38 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dt-shipment-drums", shipmentId],
-    queryFn: () => getShipmentDrums(shipmentId),
+  const { data: linkData, isLoading: idsLoading } = useQuery({
+    queryKey: ["shipment-drum-ids", shipmentId],
+    queryFn: () => getShipmentDrumIds(shipmentId),
   });
 
+  const drumIds = linkData?.results ?? [];
+  const { data: drums, isLoading: drumsLoading } = useQuery({
+    queryKey: ["shipment-drums-detail", shipmentId, drumIds],
+    queryFn: () => Promise.all(drumIds.map((id) => getDrum(id))),
+    enabled: drumIds.length > 0,
+  });
+
+  const isLoading = idsLoading || (drumIds.length > 0 && drumsLoading);
+
   const removeMutation = useMutation({
-    mutationFn: (drumId: number) => unassignDrumFromShipment(shipmentId, drumId),
+    mutationFn: async (drumId: string) => {
+      await unassignDrumFromShipment(shipmentId, drumId);
+      try {
+        await updateDrum(drumId, { status: "AVAILABLE" });
+      } catch {
+        // best-effort only
+      }
+    },
     onSuccess: () => {
-      showNotification({ message: "Drum removed from shipment", variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["dt-shipment-drums", shipmentId] });
-      queryClient.invalidateQueries({ queryKey: ["dt-drums"] });
+      showNotification({
+        message: "Drum removed from shipment",
+        variant: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shipment-drum-ids", shipmentId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["drums"] });
     },
   });
 
@@ -39,7 +66,7 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
 
       {isLoading ? (
         <Spinner />
-      ) : !data || data.results.length === 0 ? (
+      ) : drumIds.length === 0 ? (
         <EmptyState
           icon="ri:box-3-line"
           title="No drums assigned yet"
@@ -61,15 +88,17 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
             </tr>
           </thead>
           <tbody>
-            {data.results.map((d) => (
+            {(drums ?? []).map((d) => (
               <tr key={d.id}>
                 <td className="fw-bold">{d.drum_number}</td>
-                <td>{d.container_number}</td>
-                <td>{d.length_km}</td>
+                <td>{d.container_no || "—"}</td>
+                <td>{d.length_kms}</td>
                 <td>{d.net_weight_mt}</td>
                 <td>{d.gross_weight_mt}</td>
                 <td>
-                  <StatusBadge status={d.status} />
+                  <StatusBadge
+                    status={DRUM_STATUS_LABELS[d.status] ?? d.status}
+                  />
                 </td>
                 <td>
                   <Button
@@ -88,7 +117,11 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
         </Table>
       )}
 
-      <AssignDrumsModal show={showAssign} onHide={() => setShowAssign(false)} shipmentId={shipmentId} />
+      <AssignDrumsModal
+        show={showAssign}
+        onHide={() => setShowAssign(false)}
+        shipmentId={shipmentId}
+      />
     </div>
   );
 };

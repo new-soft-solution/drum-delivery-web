@@ -8,8 +8,9 @@ import { getOrder, updateOrder } from "@/services/order.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Spinner from "@/components/Spinner";
-import { AssignOrdersModal } from "./AssignOrdersModal";
+
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
+import AssignOrdersModal from "./AssignOrdersModal";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -47,8 +48,13 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
       }
     },
     onSuccess: () => {
-      showNotification({ message: "Order removed from shipment", variant: "success" });
-      queryClient.invalidateQueries({ queryKey: ["shipment-order-ids", shipmentId] });
+      showNotification({
+        message: "Order removed from shipment",
+        variant: "success",
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["shipment-order-ids", shipmentId],
+      });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
@@ -109,7 +115,11 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
         </Table>
       )}
 
-      <AssignOrdersModal show={showAssign} onHide={() => setShowAssign(false)} shipmentId={shipmentId} />
+      <AssignOrdersModal
+        show={showAssign}
+        onHide={() => setShowAssign(false)}
+        shipmentId={shipmentId}
+      />
     </div>
   );
 };

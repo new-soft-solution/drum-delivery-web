@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { ClientDetails } from "./ClientDetails";
 import { ClientForm } from "./ClientForm";
 import type { NormalizedError } from "@/types/error.type";
@@ -14,6 +14,51 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
+import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+
+const EXPORT_COLUMNS: ExportColumn<Client>[] = [
+  {
+    header: "Client ID",
+    value: (c) => c.client_id,
+    xlsxWidth: 16,
+    pdfWidth: 60,
+  },
+  { header: "Client Name", value: (c) => c.name, xlsxWidth: 24, pdfWidth: 90 },
+  {
+    header: "Contact Person",
+    value: (c) => c.contact_person,
+    xlsxWidth: 22,
+    pdfWidth: 80,
+  },
+  { header: "Email", value: (c) => c.email, xlsxWidth: 28, pdfWidth: 100 },
+  { header: "Phone", value: (c) => c.phone || "", xlsxWidth: 16, pdfWidth: 70 },
+  {
+    header: "Address",
+    value: (c) => c.address || "",
+    xlsxWidth: 26,
+    pdfWidth: 90,
+  },
+  { header: "City", value: (c) => c.city || "", xlsxWidth: 16, pdfWidth: 60 },
+  { header: "State", value: (c) => c.state || "", xlsxWidth: 16, pdfWidth: 60 },
+  {
+    header: "Country",
+    value: (c) => c.country || "",
+    xlsxWidth: 16,
+    pdfWidth: 60,
+  },
+  {
+    header: "Postal Code",
+    value: (c) => c.postal_code || "",
+    xlsxWidth: 14,
+    pdfWidth: 55,
+  },
+  {
+    header: "Status",
+    value: (c) => (c.is_active ? "Active" : "Inactive"),
+    xlsxWidth: 12,
+    pdfWidth: 50,
+  },
+];
 
 export const ClientTable = () => {
   const queryClient = useQueryClient();
@@ -32,32 +77,53 @@ export const ClientTable = () => {
     showCheckBox: true,
   });
 
-  const params = {
-    ...buildQueryParams(),
-    search: state.globalFilter || undefined,
-    ...state.filters,
-    ordering: state.sorting?.length
-      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
-      : undefined,
-  };
-
+  const params = buildQueryParams();
+  // NOTE: the real /api/clients/ endpoint (confirmed via schema.yaml) only
+  // supports filtering by city/country/email/name/phone + page — there's no
+  // generic full-text `search` or `ordering` param like /api/orders/ has.
+  // The table's search box is mapped to the `name` filter as the most
+  // useful single-field stand-in.
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["clients", params],
     queryFn: () =>
       getClients({
-        search: params.search,
-        ordering: params.ordering,
+        name: state.globalFilter || undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
-        page_size:
-          typeof state.pagination?.pageSize === "number"
-            ? state.pagination.pageSize
-            : 10,
       }),
     staleTime: 1000 * 60,
   });
+
+  const rows = data?.results || [];
+
+  // NOTE: exports cover whatever page is currently loaded, not the full
+  // dataset — /api/clients/ is paginated and there's no "give me
+  // everything" endpoint to export against instead.
+  const handleExcelExport = useCallback(async () => {
+    const meta: ExportMeta = {
+      title: "Clients",
+      fileBaseName: "clients",
+      generatedAt: new Date(),
+      filtersLine: state.globalFilter
+        ? `Search: ${state.globalFilter}`
+        : undefined,
+    };
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Clients" });
+  }, [rows, state.globalFilter]);
+
+  const handlePdfExport = useCallback(async () => {
+    const meta: ExportMeta = {
+      title: "Clients",
+      fileBaseName: "clients",
+      generatedAt: new Date(),
+      filtersLine: state.globalFilter
+        ? `Search: ${state.globalFilter}`
+        : undefined,
+    };
+    await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
+  }, [rows, state.globalFilter]);
 
   const columns = useMemo(
     () => [
@@ -104,7 +170,7 @@ export const ClientTable = () => {
   return (
     <>
       <CRUDTable<Client>
-        data={data?.results || []}
+        data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
@@ -141,6 +207,10 @@ export const ClientTable = () => {
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{ entityName: "Client", tableHeader: "All Clients" }}
+        isPdfExport={rows.length > 0}
+        isExcelExport={rows.length > 0}
+        onPdfExport={handlePdfExport}
+        onExcelExport={handleExcelExport}
       />
 
       <DetailsModal<Client>
