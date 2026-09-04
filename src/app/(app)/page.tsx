@@ -49,8 +49,8 @@ const STAT_CARDS = [
     label: "Total Shipments",
     icon: "ri:ship-line",
     href: "/shipments",
-    color: "#0f7a63",
-    bg: "#e7f5f0",
+    color: "#203975",
+    bg: "#2039754D",
   },
   {
     key: "drums",
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                     {
                       label: "Delivered",
                       value: mock.shipments.delivered,
-                      color: "#0f7a63",
+                      color: "#203975",
                     },
                   ]}
                 />
@@ -306,7 +306,7 @@ export default function DashboardPage() {
               >
                 <IconifyIcon
                   icon="ri:truck-line"
-                  style={{ color: "#008071" }}
+                  style={{ color: "#203975" }}
                 />
                 <span>
                   {mock?.truckDeliveries.total ?? "—"} truck deliveries
@@ -403,7 +403,7 @@ export default function DashboardPage() {
                         width: 34,
                         height: 34,
                         borderRadius: 10,
-                        background: "#e7f5f0",
+                        background: "#2039754D",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                     >
                       <IconifyIcon
                         icon="ri:ship-line"
-                        style={{ color: "#0f7a63" }}
+                        style={{ color: "#203975" }}
                         width={16}
                         height={16}
                       />

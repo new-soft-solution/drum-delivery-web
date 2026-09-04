@@ -184,21 +184,6 @@ export const BulkImportDrumsModal = ({
             </li>
           </ul>
 
-          <div className={styles.uncertaintyNote}>
-            <IconifyIcon
-              icon="solar:danger-triangle-bold"
-              width={14}
-              className={styles.uncertaintyIcon}
-            />
-            <span>
-              The backend&apos;s API docs don&apos;t specify what{" "}
-              <code>bulk_import</code> actually expects inside the uploaded file
-              — the columns above are the drum model&apos;s real field names,
-              not a confirmed import format. If an import fails, check with
-              whoever built the endpoint.
-            </span>
-          </div>
-
           <a href={TEMPLATE_FILE_PATH} download className={styles.templateLink}>
             <IconifyIcon icon="solar:download-minimalistic-bold" width={16} />
             <span>Download example template (.xlsx)</span>

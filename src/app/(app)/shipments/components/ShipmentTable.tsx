@@ -6,8 +6,14 @@ import { ShipmentForm } from "./ShipmentForm";
 import ShipmentFilter from "./ShipmentFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import { deleteShipment, getShipments } from "@/services/drum-tracer/shipment.service";
-import { DTShipment, DTShipmentFilterType } from "@/types/drum-tracer/shipment.type";
+import {
+  deleteShipment,
+  getShipments,
+} from "@/services/drum-tracer/shipment.service";
+import {
+  DTShipment,
+  DTShipmentFilterType,
+} from "@/types/drum-tracer/shipment.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -15,7 +21,12 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
 
 const EXPORT_COLUMNS: ExportColumn<DTShipment>[] = [
   {
@@ -140,7 +151,7 @@ export const ShipmentTable = () => {
                 width: 30,
                 height: 30,
                 borderRadius: 8,
-                background: "#e7f5f0",
+                background: "#2039754D",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -151,7 +162,7 @@ export const ShipmentTable = () => {
                 icon="ri:ship-line"
                 width={15}
                 height={15}
-                style={{ color: "#0f7a63" }}
+                style={{ color: "#203975" }}
               />
             </span>
             {cell.getValue<string>()}
