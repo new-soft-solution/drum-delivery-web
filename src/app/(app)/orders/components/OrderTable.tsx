@@ -19,6 +19,7 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { formatDateNL } from "@/utils/dateFormatter";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -48,11 +49,12 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
   },
   {
     header: "Quantity",
-    value: (o) =>
-      o.quantity != null ? `${o.quantity} ${o.unit ?? ""}`.trim() : "",
-    xlsxWidth: 16,
-    pdfWidth: 60,
+    value: (o) => (o.quantity ?? null) as number | null,
+    xlsxWidth: 12,
+    pdfWidth: 45,
+    pdfAlign: "right",
   },
+  { header: "Unit", value: (o) => o.unit || "", xlsxWidth: 12, pdfWidth: 45 },
   {
     header: "Status",
     value: (o) => STATUS_LABELS[o.status] ?? o.status,
@@ -61,8 +63,7 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
   },
   {
     header: "Created",
-    value: (o) =>
-      new Date(o.creation_date ?? o.created_at).toLocaleDateString(),
+    value: (o) => formatDateNL(o.creation_date ?? o.created_at),
     xlsxWidth: 16,
     pdfWidth: 60,
   },
@@ -103,18 +104,12 @@ export const OrderTable = () => {
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
-        // NOTE: /api/orders/ doesn't document a page_size param (confirmed
-        // via schema.yaml — only ordering/page/search) so it isn't sent;
-        // OrderListParams doesn't include it for the same reason.
       }),
     staleTime: 1000 * 60,
   });
 
   const rows = data?.results || [];
 
-  // NOTE: exports cover whatever page is currently loaded, not the full
-  // dataset — /api/orders/ is paginated and there's no "give me
-  // everything" endpoint to export against instead.
   const handleExcelExport = useCallback(async () => {
     const meta: ExportMeta = {
       title: "Orders",
@@ -159,9 +154,17 @@ export const OrderTable = () => {
         header: "Quantity",
         cell: (cell: CellContext<Order, unknown>) => {
           const o = cell.row.original;
-          return o.quantity != null
-            ? `${o.quantity} ${o.unit ?? ""}`.trim()
-            : "—";
+          if (o.quantity == null) return <span className="text-muted">—</span>;
+          return (
+            <span className="d-flex align-items-center gap-2">
+              <span className="fw-semibold">{o.quantity.toLocaleString()}</span>
+              {o.unit && (
+                <span className="badge bg-light text-dark border fw-normal text-lowercase">
+                  {o.unit}
+                </span>
+              )}
+            </span>
+          );
         },
       },
       {
@@ -175,9 +178,9 @@ export const OrderTable = () => {
       {
         header: "Created",
         cell: (cell: CellContext<Order, unknown>) =>
-          new Date(
+          formatDateNL(
             cell.row.original.creation_date ?? cell.row.original.created_at,
-          ).toLocaleDateString(),
+          ),
       },
       ...getDefaultColumns.slice(-1),
     ],

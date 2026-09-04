@@ -75,7 +75,7 @@ export default async function RootLayout({ children }: ChildrenType) {
             priority
           />
         </div>
-        <NextTopLoader color="#008071" showSpinner={false} />
+        <NextTopLoader color="#203975" showSpinner={false} />
         <div id="__next_splash">
           <NextIntlClientProvider messages={messages}>
             <AppProvidersWrapper>{children}</AppProvidersWrapper>
