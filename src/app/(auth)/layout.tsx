@@ -24,12 +24,12 @@ export default function AuthLayout({ children }: ChildrenType) {
           <Image
             src={logoLight}
             alt="Drum Tracer"
-            width={36}
-            height={36}
+            width={100}
+            height={60}
             style={{ objectFit: "contain" }}
           />
           <div>
-            <div className="fw-bold">Drum Tracer</div>
+            <div className="fw-bold fs-24">Drum Tracer</div>
             <div className="small opacity-75">Midal Cables</div>
           </div>
         </div>
@@ -65,7 +65,7 @@ export default function AuthLayout({ children }: ChildrenType) {
         </div>
 
         <div className="small opacity-60">
-          © {new Date().getFullYear()} Midal Cables. All rights reserved.
+          © {new Date().getFullYear()} Drum Tracer. All rights reserved.
         </div>
       </div>
 

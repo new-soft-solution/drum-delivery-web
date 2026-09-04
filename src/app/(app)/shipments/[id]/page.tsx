@@ -10,6 +10,7 @@ import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import { ShipmentDrumsTab } from "./components/ShipmentDrumsTab";
 import { ShipmentOrdersTab } from "./components/ShipmentOrdersTab";
+import { formatDateNL } from "@/utils/dateFormatter";
 
 export default function ShipmentDetailPage() {
   const params = useParams();
@@ -26,11 +27,15 @@ export default function ShipmentDetailPage() {
   });
 
   if (isLoading) return <Spinner fullCentered />;
-  if (isError || !shipment) return <ErrorMessage message="Shipment not found" />;
+  if (isError || !shipment)
+    return <ErrorMessage message="Shipment not found" />;
 
   return (
     <div className="container-fluid py-3">
-      <Link href="/shipments" className="d-inline-flex align-items-center gap-1 mb-3 fw-bold text-decoration-none">
+      <Link
+        href="/shipments"
+        className="d-inline-flex align-items-center gap-1 mb-3 fw-bold text-decoration-none"
+      >
         ← Back to Shipments
       </Link>
 
@@ -42,7 +47,7 @@ export default function ShipmentDetailPage() {
                 width: 46,
                 height: 46,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #008071, #14b8a6)",
+                background: "linear-gradient(135deg, #203975, #203975cc)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -54,7 +59,7 @@ export default function ShipmentDetailPage() {
             <div>
               <h4 className="mb-0 fw-bold">{shipment.shipment_number}</h4>
               <span className="text-muted small">
-                Created on {new Date(shipment.created_at).toLocaleDateString()}
+                Created on {formatDateNL(shipment.created_at)}
               </span>
             </div>
           </div>
@@ -68,10 +73,14 @@ export default function ShipmentDetailPage() {
             <Nav.Link eventKey="basic">Basic Information</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="drums">Drums ({shipment.drum_ids.length})</Nav.Link>
+            <Nav.Link eventKey="drums">
+              Drums ({shipment.drum_ids.length})
+            </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="orders">Orders ({shipment.order_ids.length})</Nav.Link>
+            <Nav.Link eventKey="orders">
+              Orders ({shipment.order_ids.length})
+            </Nav.Link>
           </Nav.Item>
         </Nav>
         <TabContent>
@@ -80,24 +89,48 @@ export default function ShipmentDetailPage() {
               <div className="card-body">
                 <div className="row">
                   <div className="col-md-6">
-                    <DetailRow label="Shipment Number" value={shipment.shipment_number} icon="ri-ship-line" />
+                    <DetailRow
+                      label="Shipment Number"
+                      value={shipment.shipment_number}
+                      icon="ri-ship-line"
+                    />
                     <DetailRow
                       label="Destination"
                       value={shipment.destination_site_name || "—"}
                       icon="ri-map-pin-line"
                     />
-                    <DetailRow label="Invoice Number" value={shipment.invoice_number || "—"} icon="ri-file-list-3-line" />
-                    <DetailRow label="BL Number" value={shipment.bl_number || "—"} icon="ri-file-text-line" />
+                    <DetailRow
+                      label="Invoice Number"
+                      value={shipment.invoice_number || "—"}
+                      icon="ri-file-list-3-line"
+                    />
+                    <DetailRow
+                      label="BL Number"
+                      value={shipment.bl_number || "—"}
+                      icon="ri-file-text-line"
+                    />
                   </div>
                   <div className="col-md-6">
                     <DetailRow
                       label="Expected Arrival"
-                      value={new Date(shipment.expected_arrival).toLocaleDateString()}
+                      value={formatDateNL(shipment.expected_arrival)}
                       icon="ri-calendar-event-line"
                     />
-                    <DetailRow label="Status" value={<StatusBadge status={shipment.status} />} icon="ri-radar-line" />
-                    <DetailRow label="Linked Orders" value={shipment.order_ids.length} icon="ri-clipboard-line" />
-                    <DetailRow label="Linked Drums" value={shipment.drum_ids.length} icon="ri-box-3-line" />
+                    <DetailRow
+                      label="Status"
+                      value={<StatusBadge status={shipment.status} />}
+                      icon="ri-radar-line"
+                    />
+                    <DetailRow
+                      label="Linked Orders"
+                      value={shipment.order_ids.length}
+                      icon="ri-clipboard-line"
+                    />
+                    <DetailRow
+                      label="Linked Drums"
+                      value={shipment.drum_ids.length}
+                      icon="ri-box-3-line"
+                    />
                   </div>
                 </div>
               </div>

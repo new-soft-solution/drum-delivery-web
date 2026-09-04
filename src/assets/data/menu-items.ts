@@ -15,6 +15,20 @@ export const MENU_ITEMS: MenuItemType[] = [
     icon: "iconoir:home-simple",
   },
   {
+    key: "clients",
+    label: "Clients",
+    label_nl: "Clients",
+    url: "/clients",
+    icon: "ri:building-line",
+  },
+  {
+    key: "sites",
+    label: "Sites",
+    label_nl: "Sites",
+    url: "/sites",
+    icon: "ri:map-pin-line",
+  },
+  {
     key: "orders",
     label: "Orders",
     label_nl: "Orders",
@@ -41,19 +55,5 @@ export const MENU_ITEMS: MenuItemType[] = [
     label_nl: "Drums",
     url: "/drums",
     icon: "ri:box-3-line",
-  },
-  {
-    key: "clients",
-    label: "Clients",
-    label_nl: "Clients",
-    url: "/clients",
-    icon: "ri:building-line",
-  },
-  {
-    key: "sites",
-    label: "Sites",
-    label_nl: "Sites",
-    url: "/sites",
-    icon: "ri:map-pin-line",
   },
 ];
