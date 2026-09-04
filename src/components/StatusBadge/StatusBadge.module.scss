@@ -9,7 +9,7 @@ $pink: #fd3c97 !default;
 $red: #ef4d56 !default;
 $orange: #fd7e14 !default;
 $yellow: #ff9f43 !default;
-$green: #22c55e !default;
+$green: #203975;
 $teal: #22c5ad !default;
 $cyan: #41cbd8 !default;
 
@@ -56,10 +56,12 @@ $cyan: #41cbd8 !default;
   font-size: 0.75rem !important;
   padding: 0.4rem 0.55rem !important;
 }
+
 .badgeRoot.md {
   font-size: 0.875rem !important;
   padding: 0.5rem 0.6rem !important;
 }
+
 .badgeRoot.lg {
   font-size: 0.95rem !important;
   padding: 0.6rem 0.65rem !important;
@@ -69,6 +71,7 @@ $cyan: #41cbd8 !default;
   display: inline-grid;
   place-items: center;
 }
+
 .text {
   display: inline-block;
 }
@@ -112,6 +115,7 @@ $cyan: #41cbd8 !default;
   --badge-fg: #{color-contrast($secondary)};
   --badge-border: #{mix($secondary, #000, 18%)};
 }
+
 .tone-secondary.soft {
   --badge-bg: var(--bs-secondary-bg-subtle);
   --badge-fg: var(--bs-secondary);

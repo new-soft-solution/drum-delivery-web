@@ -21,6 +21,9 @@
 .react-select__placeholder {
   color: var(--bs-secondary-color) !important;
   font-size: 0.875rem !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap;
 }
 
 .react-select__single-value {

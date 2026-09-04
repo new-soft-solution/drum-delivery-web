@@ -1,13 +1,13 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import Image from "next/image";
 
 const PALETTE = [
-  { bg: "#e7f5f0", fg: "#0f7a63" }, // teal
+  { bg: "#2039754D", fg: "#203975" },
   { bg: "#eaf0ff", fg: "#3355c9" }, // blue
   { bg: "#fdeef7", fg: "#b6297f" }, // pink
   { bg: "#fff4e5", fg: "#b46a12" }, // amber
   { bg: "#eee9fd", fg: "#6b3fd4" }, // violet
-  { bg: "#e8f7ea", fg: "#1e8e3e" }, // green
 ];
 
 function hashString(str: string) {
@@ -33,18 +33,25 @@ interface AvatarProps {
   imageSrc?: string;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ name, size = 36, className, imageSrc }) => {
+export const Avatar: React.FC<AvatarProps> = ({
+  name,
+  size = 36,
+  className,
+  imageSrc,
+}) => {
   const palette = PALETTE[hashString(name || "?") % PALETTE.length];
+  const [imageFailed, setImageFailed] = useState(false);
 
-  if (imageSrc) {
+  if (imageSrc && !imageFailed) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- avatars are
-      // remote, user-controlled URLs; next/image would need a wildcard
-      // remotePatterns entry we can't guess ahead of a real backend domain.
-      <img
+      <Image
         src={imageSrc}
         alt={name}
+        width={size}
+        height={size}
         className={className}
+        unoptimized
+        onError={() => setImageFailed(true)}
         style={{
           width: size,
           height: size,
