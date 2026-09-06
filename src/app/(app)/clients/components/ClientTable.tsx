@@ -14,7 +14,12 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
 
 const EXPORT_COLUMNS: ExportColumn<Client>[] = [
   {
@@ -77,21 +82,29 @@ export const ClientTable = () => {
     showCheckBox: true,
   });
 
-  const params = buildQueryParams();
-  // NOTE: the real /api/clients/ endpoint (confirmed via schema.yaml) only
-  // supports filtering by city/country/email/name/phone + page — there's no
-  // generic full-text `search` or `ordering` param like /api/orders/ has.
-  // The table's search box is mapped to the `name` filter as the most
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   // useful single-field stand-in.
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["clients", params],
     queryFn: () =>
       getClients({
-        name: state.globalFilter || undefined,
+        search: params.search,
+        ordering: params.ordering,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });

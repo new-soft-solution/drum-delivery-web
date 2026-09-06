@@ -1,13 +1,19 @@
 "use client";
-import { Button, Form, Row, Col } from "react-bootstrap";
+import { Button, Col, Form, Row } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
 import { DTShipment } from "@/types/drum-tracer/shipment.type";
-import { dtShipmentFormSchema, DTShipmentFormValues } from "@/types/schemas/dt-shipment.schema";
-import { createShipment, updateShipment } from "@/services/drum-tracer/shipment.service";
-import { getSites } from "@/services/drum-tracer/site.service";
+import {
+  dtShipmentFormSchema,
+  DTShipmentFormValues,
+} from "@/types/schemas/dt-shipment.schema";
+import {
+  createShipment,
+  updateShipment,
+} from "@/services/drum-tracer/shipment.service";
+import { getSites } from "@/services/site.service";
 import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
@@ -18,14 +24,18 @@ interface ShipmentFormProps {
   onSuccess: () => void;
 }
 
-export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFormProps) => {
+export const ShipmentForm = ({
+  item: shipment,
+  onCancel,
+  onSuccess,
+}: ShipmentFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!shipment;
   const { showNotification } = useNotificationContext();
 
   const { data: sitesData } = useQuery({
-    queryKey: ["dt-sites-all"],
-    queryFn: () => getSites({ page_size: 200 }),
+    queryKey: ["sites-for-shipment-form"],
+    queryFn: () => getSites({}),
   });
 
   const form = useForm<DTShipmentFormValues>({
@@ -35,7 +45,7 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
       invoice_number: shipment?.invoice_number || "",
       bl_number: shipment?.bl_number || "",
       container_number: shipment?.container_number || "",
-      destination_site_id: shipment?.destination_site_id || 0,
+      destination_site_id: shipment?.destination_site_id || "",
       expected_arrival: shipment?.expected_arrival || "",
       status: shipment?.status || "Created",
     },
@@ -43,17 +53,24 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
 
   const mutation = useMutation<unknown, NormalizedError, DTShipmentFormValues>({
     mutationFn: (payload) =>
-      isEdit && shipment?.id ? updateShipment(shipment.id, payload) : createShipment(payload),
+      isEdit && shipment?.id
+        ? updateShipment(shipment.id, payload)
+        : createShipment(payload),
     onSuccess: () => {
       showNotification({
-        message: isEdit ? "Shipment updated successfully" : "Shipment created successfully",
+        message: isEdit
+          ? "Shipment updated successfully"
+          : "Shipment created successfully",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["dt-shipments"] });
       onSuccess();
     },
     onError: (error) => {
-      showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      showNotification({
+        message: error.message || "Something went wrong!",
+        variant: "danger",
+      });
       applyServerErrors(error, form.setError);
     },
   });
@@ -73,13 +90,19 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
         <Col md={4}>
           <Form.Group className="mb-3">
             <Form.Label>Invoice Number</Form.Label>
-            <Form.Control {...form.register("invoice_number")} placeholder="Enter invoice number" />
+            <Form.Control
+              {...form.register("invoice_number")}
+              placeholder="Enter invoice number"
+            />
           </Form.Group>
         </Col>
         <Col md={4}>
           <Form.Group className="mb-3">
             <Form.Label>B/L No.</Form.Label>
-            <Form.Control {...form.register("bl_number")} placeholder="Enter B/L number" />
+            <Form.Control
+              {...form.register("bl_number")}
+              placeholder="Enter B/L number"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
@@ -91,7 +114,7 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
               {...form.register("destination_site_id")}
               isInvalid={!!form.formState.errors.destination_site_id}
             >
-              <option value={0}>Select a site</option>
+              <option value="">Select a site</option>
               {sitesData?.results.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -134,7 +157,11 @@ export const ShipmentForm = ({ item: shipment, onCancel, onSuccess }: ShipmentFo
       </Row>
 
       <div className="d-flex justify-content-end gap-2">
-        <Button variant="outline-secondary" onClick={onCancel} disabled={mutation.isPending}>
+        <Button
+          variant="outline-secondary"
+          onClick={onCancel}
+          disabled={mutation.isPending}
+        >
           Cancel
         </Button>
         <Button variant="primary" type="submit" disabled={mutation.isPending}>

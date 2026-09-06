@@ -4,29 +4,16 @@
 // would return, so it plugs straight into the existing useCRUDTable /
 // CRUDTable / DetailsModal components unmodified.
 //
-// Clients, Orders, and Drums used to live here too, but now come from the
-// real backend (drum-delivery-api.onrender.com) via
-// src/services/client.service.ts, order.service.ts, and drum.service.ts —
-// see README.md. Shipments, Sites, and Truck Deliveries have no real
-// backend endpoint yet, so they stay here. A Shipment's `order_ids` and
-// `drum_ids` now hold real UUIDs (strings) rather than referencing
-// anything in this file.
+// Clients, Orders, Drums, and Sites used to live here too, but now come
+// from the real backend (drum-delivery-api.onrender.com) via
+// src/services/client.service.ts, order.service.ts, drum.service.ts, and
+// site.service.ts — see README.md. Shipments and Truck Deliveries have no
+// real backend endpoint yet, so they stay here. A Shipment's `order_ids`,
+// `drum_ids`, and `destination_site_id` now hold real UUIDs (strings)
+// rather than referencing anything in this file.
 
 export type ShipmentStatus = "Created" | "In Transit" | "Arrived" | "Delivered";
 export type TruckStatus = "Scheduled" | "In Transit" | "Delivered" | "Overdue";
-
-export interface DTSite {
-  id: number;
-  name: string;
-  address: string;
-  city: string;
-  postal_code?: string;
-  state?: string;
-  country: string;
-  contact_person?: string;
-  contact_phone?: string;
-  created_at: string;
-}
 
 export interface DTShipment {
   id: number;
@@ -34,7 +21,7 @@ export interface DTShipment {
   invoice_number?: string;
   bl_number?: string;
   container_number?: string;
-  destination_site_id: number;
+  destination_site_id: string; // real Site UUID from the live backend
   expected_arrival: string;
   status: ShipmentStatus;
   order_ids: string[]; // real Order UUIDs from the live backend
@@ -57,7 +44,6 @@ export interface DTTruckDelivery {
 
 interface Store {
   nextId: Record<string, number>;
-  sites: DTSite[];
   shipments: DTShipment[];
   truckDeliveries: DTTruckDelivery[];
 }
@@ -65,26 +51,13 @@ interface Store {
 function seed(): Store {
   const now = new Date().toISOString();
 
-  const site: DTSite = {
-    id: 1,
-    name: "4500202348 Site",
-    address: "Baulager Wi2Co, Weserstraße 22 - 32",
-    city: "Weserstraße",
-    postal_code: "26452 Sande",
-    state: "",
-    country: "Germany",
-    contact_person: "Dennis Pieper",
-    contact_phone: "0151 20355183",
-    created_at: now,
-  };
-
   const shipment: DTShipment = {
     id: 1,
     shipment_number: "SH2026001",
     invoice_number: "PMCL/2026/P/0466",
     bl_number: "BHA0122959",
     container_number: "",
-    destination_site_id: 1,
+    destination_site_id: "", // no real site UUID known ahead of time — set one via editing the shipment
     expected_arrival: "2026-08-19",
     status: "In Transit",
     order_ids: [], // no real order UUIDs known ahead of time — link one via "Assign Orders"
@@ -93,8 +66,7 @@ function seed(): Store {
   };
 
   return {
-    nextId: { sites: 2, shipments: 2, truckDeliveries: 1 },
-    sites: [site],
+    nextId: { shipments: 2, truckDeliveries: 1 },
     shipments: [shipment],
     truckDeliveries: [],
   };

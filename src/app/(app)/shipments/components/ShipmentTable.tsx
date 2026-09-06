@@ -6,14 +6,10 @@ import { ShipmentForm } from "./ShipmentForm";
 import ShipmentFilter from "./ShipmentFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import {
-  deleteShipment,
-  getShipments,
-} from "@/services/drum-tracer/shipment.service";
-import {
-  DTShipment,
-  DTShipmentFilterType,
-} from "@/types/drum-tracer/shipment.type";
+import { deleteShipment, getShipments } from "@/services/drum-tracer/shipment.service";
+import { getSite } from "@/services/site.service";
+import { SiteName } from "@/components/ui/SiteName/SiteName";
+import { DTShipment, DTShipmentFilterType } from "@/types/drum-tracer/shipment.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -21,14 +17,11 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import {
-  ExportColumn,
-  ExportMeta,
-  exportToExcel,
-  exportToPdf,
-} from "@/utils/report-export";
+import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
 
-const EXPORT_COLUMNS: ExportColumn<DTShipment>[] = [
+const EXPORT_COLUMNS = (
+  siteNames: Map<string, string>,
+): ExportColumn<DTShipment>[] => [
   {
     header: "Shipment Number",
     value: (s) => s.shipment_number,
@@ -55,7 +48,8 @@ const EXPORT_COLUMNS: ExportColumn<DTShipment>[] = [
   },
   {
     header: "Destination",
-    value: (s) => s.destination_site_name || "",
+    value: (s) =>
+      siteNames.get(s.destination_site_id) || s.destination_site_id || "",
     xlsxWidth: 24,
     pdfWidth: 90,
   },
@@ -111,7 +105,30 @@ export const ShipmentTable = () => {
 
   const rows = data?.results || [];
 
+  // Shipments only store a real Site UUID, not its name — resolve every
+  // unique destination site referenced in the currently-loaded rows before
+  // exporting, since ExportColumn.value must be synchronous.
+  const resolveSiteNames = useCallback(async (): Promise<
+    Map<string, string>
+  > => {
+    const ids = Array.from(
+      new Set(rows.map((s) => s.destination_site_id).filter(Boolean)),
+    );
+    const entries = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const site = await getSite(id);
+          return [id, site.name] as const;
+        } catch {
+          return [id, id] as const;
+        }
+      }),
+    );
+    return new Map(entries);
+  }, [rows]);
+
   const handleExcelExport = useCallback(async () => {
+    const siteNames = await resolveSiteNames();
     const meta: ExportMeta = {
       title: "Shipments",
       fileBaseName: "shipments",
@@ -120,10 +137,13 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Shipments" });
-  }, [rows, state.globalFilter]);
+    await exportToExcel(rows, EXPORT_COLUMNS(siteNames), meta, {
+      sheetName: "Shipments",
+    });
+  }, [rows, state.globalFilter, resolveSiteNames]);
 
   const handlePdfExport = useCallback(async () => {
+    const siteNames = await resolveSiteNames();
     const meta: ExportMeta = {
       title: "Shipments",
       fileBaseName: "shipments",
@@ -132,8 +152,10 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
-  }, [rows, state.globalFilter]);
+    await exportToPdf(rows, EXPORT_COLUMNS(siteNames), meta, {
+      useColumnWidths: true,
+    });
+  }, [rows, state.globalFilter, resolveSiteNames]);
 
   const columns = useMemo(
     () => [
@@ -169,7 +191,13 @@ export const ShipmentTable = () => {
           </Link>
         ),
       },
-      { header: "Destination", accessorKey: "destination_site_name" },
+      {
+        header: "Destination",
+        accessorKey: "destination_site_id",
+        cell: (cell: CellContext<DTShipment, unknown>) => (
+          <SiteName siteId={cell.row.original.destination_site_id} />
+        ),
+      },
       {
         header: "Expected Arrival",
         accessorKey: "expected_arrival",

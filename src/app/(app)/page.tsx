@@ -9,6 +9,7 @@ import Avatar from "@/components/ui/Avatar/Avatar";
 import { getClients } from "@/services/client.service";
 import { getOrders } from "@/services/order.service";
 import { getDrums } from "@/services/drum.service";
+import { SiteName } from "@/components/ui/SiteName/SiteName";
 
 interface MockDashboardData {
   shipments: {
@@ -18,11 +19,10 @@ interface MockDashboardData {
     delivered: number;
   };
   truckDeliveries: { total: number; scheduled: number };
-  sites: number;
   recentShipments: {
     id: number;
     shipment_number: string;
-    destination_site_name: string;
+    destination_site_id: string;
     status: string;
     expected_arrival: string;
   }[];
@@ -422,7 +422,7 @@ export default function DashboardPage() {
                         {s.shipment_number}
                       </div>
                       <div className="small text-muted text-truncate">
-                        {s.destination_site_name}
+                        <SiteName siteId={s.destination_site_id} />
                       </div>
                     </div>
                     <StatusBadge status={s.status} size="sm" />

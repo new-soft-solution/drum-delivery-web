@@ -1,3 +1,4 @@
+// src/types/schemas/dt-shipment.schema.ts
 import { z } from "zod";
 
 export const dtShipmentFormSchema = z.object({
@@ -5,7 +6,7 @@ export const dtShipmentFormSchema = z.object({
   invoice_number: z.string().optional(),
   bl_number: z.string().optional(),
   container_number: z.string().optional(),
-  destination_site_id: z.coerce.number().min(1, "Destination site is required"),
+  destination_site_id: z.string().min(1, "Destination site is required"),
   expected_arrival: z.string().min(1, "Expected arrival date is required"),
   status: z.enum(["Created", "In Transit", "Arrived", "Delivered"]).optional(),
 });
