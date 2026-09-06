@@ -211,7 +211,7 @@ export default function DashboardPage() {
     <>
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
         <div>
-          <h4 className="mb-0 fw-bold">Welcome back 👋</h4>
+          <h4 className="mb-0 fw-bold">Welcome back</h4>
           <p className="text-muted small mb-0">
             Here&apos;s what&apos;s moving through Drum Tracer today.
           </p>

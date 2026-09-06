@@ -107,12 +107,22 @@
 
 .instructionList {
   margin: 0 0 10px;
-  padding-left: 18px;
+  padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
   font-size: 0.85rem;
+  line-height: 1.5;
   color: var(--bs-body-color);
+}
+
+.instructionList li {
+  padding-left: 2px;
+}
+
+.instructionList strong {
+  color: var(--bs-body-color);
+  font-weight: 700;
 }
 
 .instructionList code {
@@ -146,6 +156,7 @@
 .templateLink {
   display: inline-flex;
   align-items: center;
+  justify-content: end;
   gap: 6px;
   color: var(--bs-primary);
   font-weight: 600;
@@ -156,6 +167,7 @@
   background: var(--bs-body-bg);
   border: 1px solid rgba(var(--bs-primary-rgb), 0.18);
   transition: background-color 0.15s ease, transform 0.1s ease;
+  margin-left: auto;
 }
 
 .templateLink:hover {
