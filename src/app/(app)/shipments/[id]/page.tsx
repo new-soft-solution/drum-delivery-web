@@ -10,6 +10,7 @@ import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import { ShipmentDrumsTab } from "./components/ShipmentDrumsTab";
 import { ShipmentOrdersTab } from "./components/ShipmentOrdersTab";
+import { SiteName } from "@/components/ui/SiteName/SiteName";
 import { formatDateNL } from "@/utils/dateFormatter";
 
 export default function ShipmentDetailPage() {
@@ -96,7 +97,7 @@ export default function ShipmentDetailPage() {
                     />
                     <DetailRow
                       label="Destination"
-                      value={shipment.destination_site_name || "—"}
+                      value={<SiteName siteId={shipment.destination_site_id} />}
                       icon="ri-map-pin-line"
                     />
                     <DetailRow

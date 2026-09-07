@@ -9,8 +9,7 @@ export interface DTShipment {
   invoice_number?: string;
   bl_number?: string;
   container_number?: string;
-  destination_site_id: number;
-  destination_site_name?: string;
+  destination_site_id: string; // real Site UUID (see src/services/site.service.ts)
   expected_arrival: string;
   status: ShipmentStatus;
   order_ids: string[];

@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { ClientDetails } from "./ClientDetails";
 import { ClientForm } from "./ClientForm";
+import ClientFilter from "./ClientFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteClient, getClients } from "@/services/client.service";
-import { Client } from "@/types/client.type";
+import { Client, ClientFilterType } from "@/types/client.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -77,21 +78,30 @@ export const ClientTable = () => {
     showCheckBox: true,
   });
 
-  const params = buildQueryParams();
-  // NOTE: the real /api/clients/ endpoint (confirmed via schema.yaml) only
-  // supports filtering by city/country/email/name/phone + page — there's no
-  // generic full-text `search` or `ordering` param like /api/orders/ has.
-  // The table's search box is mapped to the `name` filter as the most
-  // useful single-field stand-in.
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["clients", params],
     queryFn: () =>
       getClients({
-        name: state.globalFilter || undefined,
+        search: params.search,
+        ordering: params.ordering,
+        city: state.filters.city as string | undefined,
+        country: state.filters.country as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
@@ -101,29 +111,33 @@ export const ClientTable = () => {
   // NOTE: exports cover whatever page is currently loaded, not the full
   // dataset — /api/clients/ is paginated and there's no "give me
   // everything" endpoint to export against instead.
+  const filtersLine = [
+    state.globalFilter ? `Search: ${state.globalFilter}` : null,
+    state.filters.city ? `City: ${state.filters.city}` : null,
+    state.filters.country ? `Country: ${state.filters.country}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
   const handleExcelExport = useCallback(async () => {
     const meta: ExportMeta = {
       title: "Clients",
       fileBaseName: "clients",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine: filtersLine || undefined,
     };
     await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Clients" });
-  }, [rows, state.globalFilter]);
+  }, [rows, filtersLine]);
 
   const handlePdfExport = useCallback(async () => {
     const meta: ExportMeta = {
       title: "Clients",
       fileBaseName: "clients",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine: filtersLine || undefined,
     };
     await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
-  }, [rows, state.globalFilter]);
+  }, [rows, filtersLine]);
 
   const columns = useMemo(
     () => [
@@ -167,15 +181,17 @@ export const ClientTable = () => {
     [getDefaultColumns],
   );
 
+  const initialFilters: ClientFilterType = {};
+
   return (
     <>
-      <CRUDTable<Client>
+      <CRUDTable<Client, ClientFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Client>}
+        state={state as CRUDTableState<Client, ClientFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -204,9 +220,14 @@ export const ClientTable = () => {
                 : selection,
           }))
         }
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Client", tableHeader: "All Clients" }}
+        options={{
+          entityName: "Client",
+          tableHeader: "All Clients",
+          filterOptions: { initialFilters, filterComponent: ClientFilter },
+        }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
         onPdfExport={handlePdfExport}

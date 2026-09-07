@@ -82,19 +82,28 @@ export const DrumTable = () => {
     showCheckBox: true,
   });
 
-  const params = buildQueryParams();
-  // /api/drums/ (confirmed) supports `search`, `ordering`, `page` — no
-  // status filter, so none is sent (matches the Orders precedent).
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["drums", params],
     queryFn: () =>
       getDrums({
-        search: state.globalFilter || undefined,
+        search: params.search,
         ordering: params.ordering,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
