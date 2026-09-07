@@ -2,23 +2,12 @@
 import { NextResponse } from "next/server";
 import { dtStore } from "@/lib/drum-tracer/store";
 
-function enrich(id: number) {
-  const shipment = dtStore.shipments.find((s) => s.id === id);
-  if (!shipment) return null;
-  return {
-    ...shipment,
-    destination_site_name:
-      dtStore.sites.find((s) => s.id === shipment.destination_site_id)?.name ??
-      "Unknown",
-  };
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const shipment = enrich(Number(id));
+  const shipment = dtStore.shipments.find((s) => s.id === Number(id));
   if (!shipment)
     return NextResponse.json({ message: "Not found" }, { status: 404 });
   return NextResponse.json(shipment);

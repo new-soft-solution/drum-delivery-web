@@ -37,5 +37,7 @@ export type ClientListResponse = PaginatedResponse<Client>;
 
 export interface ClientFilterType {
   status?: string;
+  city?: string;
+  country?: string;
   [key: string]: unknown;
 }

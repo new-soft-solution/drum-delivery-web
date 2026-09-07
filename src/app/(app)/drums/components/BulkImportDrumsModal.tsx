@@ -161,33 +161,36 @@ export const BulkImportDrumsModal = ({
         <section className={styles.instructions}>
           <header className={styles.sectionHeader}>
             <IconifyIcon
-              icon="solar:document-text-bold"
+              icon="solar:info-circle-bold"
               width={16}
               className={styles.sectionHeaderIcon}
             />
-            <h6 className={styles.sectionTitle}>Suggested columns</h6>
+            <h6 className={styles.sectionTitle}>Bulk Import Instructions</h6>
           </header>
           <ul className={styles.instructionList}>
+            <li>Upload a Excel file with drum data.</li>
             <li>
-              <code>drum_number</code>, <code>length_kms</code>,{" "}
-              <code>net_weight_mt</code>, <code>gross_weight_mt</code> — these
-              match the drum fields the backend actually stores.
+              <strong>Required columns:</strong> Drum Number, Length KMs, Net
+              Weight MT, Gross Weight MT
             </li>
             <li>
-              <code>status</code> — one of <code>AVAILABLE</code>,{" "}
-              <code>IN_ORDER</code>, <code>IN_SHIPMENT</code>,{" "}
-              <code>DELIVERED</code>, <code>MISSING</code>, <code>DAMAGED</code>
-              .
+              <strong>Optional columns:</strong> Container Number, Status, Notes
             </li>
             <li>
-              <code>container_no</code>, <code>notes</code> — optional.
+              <strong>Status</strong> (if included) must be one of: Available,
+              In Order, In Shipment, Delivered, Missing, Damaged
             </li>
           </ul>
-
-          <a href={TEMPLATE_FILE_PATH} download className={styles.templateLink}>
-            <IconifyIcon icon="solar:download-minimalistic-bold" width={16} />
-            <span>Download example template (.xlsx)</span>
-          </a>
+          <div className="d-flex justify-content-end">
+            <a
+              href={TEMPLATE_FILE_PATH}
+              download
+              className={styles.templateLink}
+            >
+              <IconifyIcon icon="solar:download-minimalistic-bold" width={16} />
+              <span>Download example template (.xlsx)</span>
+            </a>
+          </div>
         </section>
 
         {/* Dropzone */}
