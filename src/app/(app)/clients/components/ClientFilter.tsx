@@ -13,21 +13,6 @@ const ClientFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
     <div className="row g-3">
       <div className="col-12 col-md-6">
         <Form.Group>
-          <Form.Label>City</Form.Label>
-          <Form.Control
-            value={tempFilters.city || ""}
-            placeholder="e.g., Amsterdam"
-            onChange={(e) =>
-              onTempFilterChange({
-                ...tempFilters,
-                city: e.target.value || undefined,
-              })
-            }
-          />
-        </Form.Group>
-      </div>
-      <div className="col-12 col-md-6">
-        <Form.Group>
           <Form.Label>Country</Form.Label>
           <CountrySelect
             countries={COUNTRY_LIST}
@@ -37,6 +22,21 @@ const ClientFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
               onTempFilterChange({
                 ...tempFilters,
                 country: value || undefined,
+              })
+            }
+          />
+        </Form.Group>
+      </div>
+      <div className="col-12 col-md-6">
+        <Form.Group>
+          <Form.Label>City</Form.Label>
+          <Form.Control
+            value={tempFilters.city || ""}
+            placeholder="e.g., Amsterdam"
+            onChange={(e) =>
+              onTempFilterChange({
+                ...tempFilters,
+                city: e.target.value || undefined,
               })
             }
           />

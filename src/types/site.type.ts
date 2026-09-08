@@ -22,10 +22,15 @@ export interface SiteListParams {
   page_size?: number;
   ordering?: string;
   search?: string;
+  city?: string;
+  country?: string;
+  name?: string;
 }
 
 export type SiteListResponse = PaginatedResponse<Site>;
 
 export interface SiteFilterType {
+  city?: string;
+  country?: string;
   [key: string]: unknown;
 }

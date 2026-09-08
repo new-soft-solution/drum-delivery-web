@@ -1,14 +1,14 @@
-// src/app/(app)/drums/components/DrumTable.tsx
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DrumDetails } from "./DrumDetails";
 import { DrumForm } from "./DrumForm";
 import { BulkImportDrumsModal } from "./BulkImportDrumsModal";
+import DrumFilter from "./DrumFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteDrum, getDrums } from "@/services/drum.service";
-import { Drum, DRUM_STATUS_LABELS } from "@/types/drum.type";
+import { Drum, DRUM_STATUS_LABELS, DrumFilterType } from "@/types/drum.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -96,6 +96,8 @@ export const DrumTable = () => {
       getDrums({
         search: params.search,
         ordering: params.ordering,
+        status: state.filters.status as string | undefined,
+        drum_number: state.filters.drum_number as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -177,15 +179,17 @@ export const DrumTable = () => {
     [getDefaultColumns],
   );
 
+  const initialFilters: DrumFilterType = {};
+
   return (
     <>
-      <CRUDTable<Drum>
+      <CRUDTable<Drum, DrumFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Drum>}
+        state={state as CRUDTableState<Drum, DrumFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -214,9 +218,14 @@ export const DrumTable = () => {
                 : selection,
           }))
         }
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Drum", tableHeader: "All Drums" }}
+        options={{
+          entityName: "Drum",
+          tableHeader: "All Drums",
+          filterOptions: { initialFilters, filterComponent: DrumFilter },
+        }}
         isImport={true}
         onImport={() => setShowBulkImport(true)}
         isPdfExport={rows.length > 0}

@@ -66,8 +66,9 @@ const TopNavigationBar = () => {
               <Dropdown align="end">
                 <Dropdown.Toggle
                   as="button"
-                  className="btn btn-link nav-link d-flex align-items-center gap-2 text-decoration-none border-0 bg-transparent"
-                  style={{ boxShadow: "none" }}
+                  className="btn btn-link nav-link d-flex align-items-center gap-2
+                  text-decoration-none border-0 bg-transparent"
+                  style={{ boxShadow: "none", textAlign: "left" }}
                 >
                   <Avatar
                     name={fullName}
@@ -78,7 +79,10 @@ const TopNavigationBar = () => {
                     <span className="fw-semibold small d-block text-dark">
                       {fullName}
                     </span>
-                    <span className="small text-muted" style={{ fontSize: 11 }}>
+                    <span
+                      className="small text-muted d-block"
+                      style={{ fontSize: 11 }}
+                    >
                       {user?.role ?? "Administrator"}
                     </span>
                   </span>
