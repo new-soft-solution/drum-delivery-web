@@ -1,12 +1,8 @@
-// src/app/(app)/shipments/[id]/components/ShipmentDrumsTab.tsx
 "use client";
 import { useState } from "react";
 import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  getShipmentDrumIds,
-  unassignDrumFromShipment,
-} from "@/services/drum-tracer/shipment.service";
+import { getShipment, setShipmentDrums } from "@/services/shipment.service";
 import { getDrum, updateDrum } from "@/services/drum.service";
 import { DRUM_STATUS_LABELS } from "@/types/drum.type";
 import { useNotificationContext } from "@/context/useNotificationContext";
@@ -15,28 +11,33 @@ import Spinner from "@/components/Spinner";
 import { AssignDrumsModal } from "./AssignDrumsModal";
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 
-export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
+export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
 
-  const { data: linkData, isLoading: idsLoading } = useQuery({
-    queryKey: ["shipment-drum-ids", shipmentId],
-    queryFn: () => getShipmentDrumIds(shipmentId),
+  // The real Shipment object carries `drums` (an array of Drum UUIDs)
+  // directly — there's no separate link endpoint anymore.
+  const { data: shipment, isLoading: shipmentLoading } = useQuery({
+    queryKey: ["shipment", shipmentId],
+    queryFn: () => getShipment(shipmentId),
   });
 
-  const drumIds = linkData?.results ?? [];
+  const drumIds = shipment?.drums ?? [];
   const { data: drums, isLoading: drumsLoading } = useQuery({
     queryKey: ["shipment-drums-detail", shipmentId, drumIds],
     queryFn: () => Promise.all(drumIds.map((id) => getDrum(id))),
     enabled: drumIds.length > 0,
   });
 
-  const isLoading = idsLoading || (drumIds.length > 0 && drumsLoading);
+  const isLoading = shipmentLoading || (drumIds.length > 0 && drumsLoading);
 
   const removeMutation = useMutation({
     mutationFn: async (drumId: string) => {
-      await unassignDrumFromShipment(shipmentId, drumId);
+      await setShipmentDrums(
+        shipmentId,
+        drumIds.filter((id) => id !== drumId),
+      );
       try {
         await updateDrum(drumId, { status: "AVAILABLE" });
       } catch {
@@ -48,9 +49,7 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
         message: "Drum removed from shipment",
         variant: "success",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["shipment-drum-ids", shipmentId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
       queryClient.invalidateQueries({ queryKey: ["drums"] });
     },
   });
@@ -121,6 +120,7 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: number }) => {
         show={showAssign}
         onHide={() => setShowAssign(false)}
         shipmentId={shipmentId}
+        currentDrumIds={drumIds}
       />
     </div>
   );

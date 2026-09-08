@@ -4,7 +4,7 @@ export type TruckStatus = "Scheduled" | "In Transit" | "Delivered" | "Overdue";
 
 export interface DTTruckDelivery {
   id: number;
-  shipment_id: number;
+  shipment_id: string; // real Shipment UUID
   shipment_number?: string;
   truck_number: string;
   license_plate?: string;
@@ -28,4 +28,7 @@ export interface DTTruckDeliveryFilterType extends BaseFilter {
   status?: string;
 }
 
-export type DTTruckDeliveryListResponse = { results: DTTruckDelivery[]; count: number };
+export type DTTruckDeliveryListResponse = {
+  results: DTTruckDelivery[];
+  count: number;
+};

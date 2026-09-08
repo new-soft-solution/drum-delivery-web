@@ -6,16 +6,31 @@ import { TruckDeliveryForm } from "./TruckDeliveryForm";
 import TruckDeliveryFilter from "./TruckDeliveryFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import { deleteTruckDelivery, getTruckDeliveries } from "@/services/drum-tracer/truck-delivery.service";
-import { DTTruckDelivery, DTTruckDeliveryFilterType } from "@/types/drum-tracer/truck-delivery.type";
+import {
+  deleteTruckDelivery,
+  getTruckDeliveries,
+} from "@/services/drum-tracer/truck-delivery.service";
+import {
+  DTTruckDelivery,
+  DTTruckDeliveryFilterType,
+} from "@/types/drum-tracer/truck-delivery.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
 import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import { getShipment } from "@/services/shipment.service";
+import { ShipmentNumber } from "@/components/ui/ShipmentNumber/ShipmentNumber";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
 
-const EXPORT_COLUMNS: ExportColumn<DTTruckDelivery>[] = [
+const EXPORT_COLUMNS = (
+  shipmentNumbers: Map<string, string>,
+): ExportColumn<DTTruckDelivery>[] => [
   {
     header: "Truck Number",
     value: (t) => t.truck_number,
@@ -30,7 +45,7 @@ const EXPORT_COLUMNS: ExportColumn<DTTruckDelivery>[] = [
   },
   {
     header: "Shipment",
-    value: (t) => t.shipment_number || String(t.shipment_id),
+    value: (t) => shipmentNumbers.get(t.shipment_id) || t.shipment_id || "",
     xlsxWidth: 18,
     pdfWidth: 65,
   },
@@ -103,7 +118,30 @@ export const TruckDeliveryTable = () => {
 
   const rows = data?.results || [];
 
+  // Truck Deliveries only store a real Shipment UUID, not its number —
+  // resolve every unique shipment referenced in the currently-loaded rows
+  // before exporting, since ExportColumn.value must be synchronous.
+  const resolveShipmentNumbers = useCallback(async (): Promise<
+    Map<string, string>
+  > => {
+    const ids = Array.from(
+      new Set(rows.map((t) => t.shipment_id).filter(Boolean)),
+    );
+    const entries = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const shipment = await getShipment(id);
+          return [id, shipment.shipment_number] as const;
+        } catch {
+          return [id, id] as const;
+        }
+      }),
+    );
+    return new Map(entries);
+  }, [rows]);
+
   const handleExcelExport = useCallback(async () => {
+    const shipmentNumbers = await resolveShipmentNumbers();
     const meta: ExportMeta = {
       title: "Truck Deliveries",
       fileBaseName: "truck-deliveries",
@@ -112,12 +150,13 @@ export const TruckDeliveryTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS, meta, {
+    await exportToExcel(rows, EXPORT_COLUMNS(shipmentNumbers), meta, {
       sheetName: "Truck Deliveries",
     });
-  }, [rows, state.globalFilter]);
+  }, [rows, state.globalFilter, resolveShipmentNumbers]);
 
   const handlePdfExport = useCallback(async () => {
+    const shipmentNumbers = await resolveShipmentNumbers();
     const meta: ExportMeta = {
       title: "Truck Deliveries",
       fileBaseName: "truck-deliveries",
@@ -126,14 +165,22 @@ export const TruckDeliveryTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
-  }, [rows, state.globalFilter]);
+    await exportToPdf(rows, EXPORT_COLUMNS(shipmentNumbers), meta, {
+      useColumnWidths: true,
+    });
+  }, [rows, state.globalFilter, resolveShipmentNumbers]);
 
   const columns = useMemo(
     () => [
       ...getDefaultColumns.slice(0, -1),
       { header: "Truck Number", accessorKey: "truck_number" },
-      { header: "Shipment", accessorKey: "shipment_number" },
+      {
+        header: "Shipment",
+        accessorKey: "shipment_id",
+        cell: (cell: CellContext<DTTruckDelivery, unknown>) => (
+          <ShipmentNumber shipmentId={cell.row.original.shipment_id} />
+        ),
+      },
       { header: "Driver", accessorKey: "driver_name" },
       {
         header: "Scheduled",

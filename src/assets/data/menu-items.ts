@@ -36,6 +36,13 @@ export const MENU_ITEMS: MenuItemType[] = [
     icon: "ri:clipboard-line",
   },
   {
+    key: "drums",
+    label: "Drums",
+    label_nl: "Drums",
+    url: "/drums",
+    icon: "ri:box-3-line",
+  },
+  {
     key: "shipments",
     label: "Shipments",
     label_nl: "Shipments",
@@ -48,12 +55,5 @@ export const MENU_ITEMS: MenuItemType[] = [
     label_nl: "Truck Deliveries",
     url: "/truck-deliveries",
     icon: "ri:truck-line",
-  },
-  {
-    key: "drums",
-    label: "Drums",
-    label_nl: "Drums",
-    url: "/drums",
-    icon: "ri:box-3-line",
   },
 ];
