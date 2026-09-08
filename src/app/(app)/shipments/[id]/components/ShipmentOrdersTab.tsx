@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { getShipmentOrderIds, unassignOrderFromShipment } from "@/services/drum-tracer/shipment.service";
+import { getShipment, setShipmentOrders } from "@/services/shipment.service";
 import { getOrder, updateOrder } from "@/services/order.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
@@ -19,28 +19,33 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelled",
 };
 
-export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
+export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
 
-  const { data: linkData, isLoading: idsLoading } = useQuery({
-    queryKey: ["shipment-order-ids", shipmentId],
-    queryFn: () => getShipmentOrderIds(shipmentId),
+  // The real Shipment object carries `orders` (an array of Order UUIDs)
+  // directly — there's no separate link endpoint anymore.
+  const { data: shipment, isLoading: shipmentLoading } = useQuery({
+    queryKey: ["shipment", shipmentId],
+    queryFn: () => getShipment(shipmentId),
   });
 
-  const orderIds = linkData?.results ?? [];
+  const orderIds = shipment?.orders ?? [];
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ["shipment-orders-detail", shipmentId, orderIds],
     queryFn: () => Promise.all(orderIds.map((id) => getOrder(id))),
     enabled: orderIds.length > 0,
   });
 
-  const isLoading = idsLoading || (orderIds.length > 0 && ordersLoading);
+  const isLoading = shipmentLoading || (orderIds.length > 0 && ordersLoading);
 
   const removeMutation = useMutation({
     mutationFn: async (orderId: string) => {
-      await unassignOrderFromShipment(shipmentId, orderId);
+      await setShipmentOrders(
+        shipmentId,
+        orderIds.filter((id) => id !== orderId),
+      );
       try {
         await updateOrder(orderId, { status: "CREATED" });
       } catch {
@@ -52,9 +57,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
         message: "Order removed from shipment",
         variant: "success",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["shipment-order-ids", shipmentId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });
@@ -119,6 +122,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: number }) => {
         show={showAssign}
         onHide={() => setShowAssign(false)}
         shipmentId={shipmentId}
+        currentOrderIds={orderIds}
       />
     </div>
   );

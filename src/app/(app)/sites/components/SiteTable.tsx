@@ -3,10 +3,11 @@ import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SiteDetails } from "./SiteDetails";
 import { SiteForm } from "./SiteForm";
+import SiteFilter from "./SiteFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteSite, getSites } from "@/services/site.service";
-import { Site } from "@/types/site.type";
+import { Site, SiteFilterType } from "@/types/site.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CRUDTableState } from "@/types/crud.type";
@@ -93,6 +94,8 @@ export const SiteTable = () => {
       getSites({
         search: params.search,
         ordering: params.ordering,
+        city: state.filters.city as string | undefined,
+        country: state.filters.country as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -179,15 +182,17 @@ export const SiteTable = () => {
     [getDefaultColumns],
   );
 
+  const initialFilters: SiteFilterType = {};
+
   return (
     <>
-      <CRUDTable<Site>
+      <CRUDTable<Site, SiteFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Site>}
+        state={state as CRUDTableState<Site, SiteFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -216,9 +221,14 @@ export const SiteTable = () => {
                 : selection,
           }))
         }
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
         onAddItem={handleAddItem}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Site", tableHeader: "All Sites" }}
+        options={{
+          entityName: "Site",
+          tableHeader: "All Sites",
+          filterOptions: { initialFilters, filterComponent: SiteFilter },
+        }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
         onPdfExport={handlePdfExport}

@@ -9,23 +9,12 @@ import Avatar from "@/components/ui/Avatar/Avatar";
 import { getClients } from "@/services/client.service";
 import { getOrders } from "@/services/order.service";
 import { getDrums } from "@/services/drum.service";
+import { getShipments } from "@/services/shipment.service";
+import { SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
 import { SiteName } from "@/components/ui/SiteName/SiteName";
 
 interface MockDashboardData {
-  shipments: {
-    total: number;
-    created: number;
-    inTransit: number;
-    delivered: number;
-  };
   truckDeliveries: { total: number; scheduled: number };
-  recentShipments: {
-    id: number;
-    shipment_number: string;
-    destination_site_id: string;
-    status: string;
-    expected_arrival: string;
-  }[];
 }
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -173,10 +162,11 @@ export default function DashboardPage() {
       .then(setMock);
   }, []);
 
-  // Clients and Orders come from the real backend now — fetched
-  // client-side (via authApi, which attaches the real access token) rather
-  // than through the local mock /api/dashboard route, which has no way to
-  // authenticate against the live API.
+  // Clients, Orders, Drums, and Shipments come from the real backend now —
+  // fetched client-side (via authApi, which attaches the real access
+  // token) rather than through the local mock /api/dashboard route, which
+  // has no way to authenticate against the live API. Only Truck
+  // Deliveries (still mock) come from that route.
   const { data: clientsData } = useQuery({
     queryKey: ["dashboard-clients"],
     queryFn: () => getClients({}),
@@ -189,18 +179,34 @@ export default function DashboardPage() {
     queryKey: ["dashboard-drums-available"],
     queryFn: () => getDrums({ search: "" }),
   });
+  const { data: shipmentsData } = useQuery({
+    queryKey: ["dashboard-shipments"],
+    queryFn: () => getShipments({ ordering: "-created_at" }),
+  });
 
   const recentOrders = (ordersData?.results ?? []).slice(0, 5);
-  // NOTE: /api/drums/ has no status filter, so this counts "available" only
-  // within whatever page was fetched, not across all drums — an
-  // approximation, not an exact global count.
+  const recentShipments = (shipmentsData?.results ?? []).slice(0, 5);
+  // NOTE: /api/drums/ and /api/shipments/ have no "give me all pages at
+  // once" mode, so these counts only reflect whatever page was fetched,
+  // not the full dataset — an approximation, not an exact global count.
   const availableDrumsCount = (availableDrumsData?.results ?? []).filter(
     (d) => d.status === "AVAILABLE",
   ).length;
+  const shipmentStatusCounts = {
+    created: (shipmentsData?.results ?? []).filter(
+      (s) => s.status === "CREATED",
+    ).length,
+    inTransit: (shipmentsData?.results ?? []).filter(
+      (s) => s.status === "IN_TRANSIT",
+    ).length,
+    delivered: (shipmentsData?.results ?? []).filter(
+      (s) => s.status === "DELIVERED",
+    ).length,
+  };
 
   const statValues: Record<string, string | number> = {
     orders: ordersData ? ordersData.count : "—",
-    shipments: mock ? mock.shipments.total : "—",
+    shipments: shipmentsData ? shipmentsData.count : "—",
     drums: availableDrumsData
       ? `${availableDrumsCount}/${availableDrumsData.count}`
       : "—",
@@ -218,12 +224,10 @@ export default function DashboardPage() {
         </div>
         <div className="d-flex gap-2">
           <Link href="/shipments" className="btn btn-sm btn-outline-secondary">
-            <IconifyIcon icon="ri:ship-line" className="me-1" />
-            View Shipments
+            <IconifyIcon icon="ri:ship-line" className="me-1" /> View Shipments
           </Link>
           <Link href="/orders" className="btn btn-sm btn-primary">
-            <IconifyIcon icon="ri:add-line" className="me-1" />
-            View Orders
+            <IconifyIcon icon="ri:add-line" className="me-1" /> View Orders
           </Link>
         </div>
       </div>
@@ -271,7 +275,7 @@ export default function DashboardPage() {
           <div className="card h-100 border-0 shadow-sm">
             <div className="card-body">
               <h6 className="fw-bold mb-3">Shipment Status Mix</h6>
-              {!mock ? (
+              {!shipmentsData ? (
                 <div className="placeholder-glow">
                   <span
                     className="placeholder col-12"
@@ -283,17 +287,17 @@ export default function DashboardPage() {
                   segments={[
                     {
                       label: "Created",
-                      value: mock.shipments.created,
+                      value: shipmentStatusCounts.created,
                       color: "#c7cbd4",
                     },
                     {
                       label: "In Transit",
-                      value: mock.shipments.inTransit,
+                      value: shipmentStatusCounts.inTransit,
                       color: "#3355c9",
                     },
                     {
                       label: "Delivered",
-                      value: mock.shipments.delivered,
+                      value: shipmentStatusCounts.delivered,
                       color: "#203975",
                     },
                   ]}
@@ -379,7 +383,7 @@ export default function DashboardPage() {
                   View all
                 </Link>
               </div>
-              {!mock ? (
+              {!shipmentsData ? (
                 <div className="placeholder-glow">
                   {[1, 2, 3].map((i) => (
                     <span
@@ -389,10 +393,10 @@ export default function DashboardPage() {
                     />
                   ))}
                 </div>
-              ) : mock.recentShipments.length === 0 ? (
+              ) : recentShipments.length === 0 ? (
                 <p className="text-muted small mb-0">No shipments yet.</p>
               ) : (
-                mock.recentShipments.map((s) => (
+                recentShipments.map((s) => (
                   <Link
                     key={s.id}
                     href={`/shipments/${s.id}`}
@@ -422,10 +426,13 @@ export default function DashboardPage() {
                         {s.shipment_number}
                       </div>
                       <div className="small text-muted text-truncate">
-                        <SiteName siteId={s.destination_site_id} />
+                        <SiteName siteId={s.destination_site} />
                       </div>
                     </div>
-                    <StatusBadge status={s.status} size="sm" />
+                    <StatusBadge
+                      status={SHIPMENT_STATUS_LABELS[s.status] ?? s.status}
+                      size="sm"
+                    />
                   </Link>
                 ))
               )}

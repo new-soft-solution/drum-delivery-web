@@ -1,3 +1,4 @@
+// src/app/(app)/shipments/[id]/components/AssignDrumsModal.tsx
 "use client";
 import { useState } from "react";
 import {
@@ -10,45 +11,53 @@ import {
   ModalHeader,
 } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { assignDrumsToShipment } from "@/services/drum-tracer/shipment.service";
+import { setShipmentDrums } from "@/services/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
-import { getDrums } from "@/services/drum.service";
+import { getDrums, updateDrum } from "@/services/drum.service";
 
 interface AssignDrumsModalProps {
   show: boolean;
   onHide: () => void;
-  shipmentId: number;
+  shipmentId: string;
+  currentDrumIds: string[];
 }
 
 export const AssignDrumsModal = ({
   show,
   onHide,
   shipmentId,
+  currentDrumIds,
 }: AssignDrumsModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
+  // /api/drums/ (confirmed) supports a real `status` filter now — used
+  // here server-side instead of fetching everything and filtering client-side.
   const { data, isLoading } = useQuery({
-    queryKey: ["dt-drums-unassigned", search],
-    queryFn: () => getDrums({ search, page_size: 100 }),
+    queryKey: ["drums-for-assign", search],
+    queryFn: () => getDrums({ search, status: "AVAILABLE" }),
     enabled: show,
   });
 
   const mutation = useMutation({
-    mutationFn: () => assignDrumsToShipment(shipmentId, selected),
+    mutationFn: async () => {
+      await setShipmentDrums(shipmentId, [...currentDrumIds, ...selected]);
+      // Best-effort: reflect the link on each real drum too.
+      await Promise.allSettled(
+        selected.map((id) => updateDrum(id, { status: "IN_SHIPMENT" })),
+      );
+    },
     onSuccess: () => {
       showNotification({
         message: `${selected.length} drum(s) assigned`,
         variant: "success",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["dt-shipment-drums", shipmentId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["dt-drums-unassigned"] });
-      queryClient.invalidateQueries({ queryKey: ["dt-drums"] });
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["drums-for-assign"] });
+      queryClient.invalidateQueries({ queryKey: ["drums"] });
       setSelected([]);
       onHide();
     },
@@ -63,6 +72,10 @@ export const AssignDrumsModal = ({
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+
+  const candidates = (data?.results ?? []).filter(
+    (d) => !currentDrumIds.includes(d.id),
+  );
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
@@ -80,13 +93,13 @@ export const AssignDrumsModal = ({
 
         {isLoading ? (
           <Spinner />
-        ) : !data || data.results.length === 0 ? (
+        ) : candidates.length === 0 ? (
           <p className="text-muted text-center py-4">
-            No available (unassigned) drums found.
+            No available drums to assign.
           </p>
         ) : (
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {data.results.map((d) => (
+            {candidates.map((d) => (
               <Form.Check
                 key={d.id}
                 type="checkbox"
@@ -98,7 +111,7 @@ export const AssignDrumsModal = ({
                   <span>
                     <b>{d.drum_number}</b>{" "}
                     <span className="text-muted small">
-                      · {d.container_no} · {d.length_kms} KMs · Net{" "}
+                      · {d.container_no || "—"} · {d.length_kms} KMs · Net{" "}
                       {d.net_weight_mt} MT
                     </span>
                   </span>

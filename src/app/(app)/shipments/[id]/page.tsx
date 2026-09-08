@@ -3,7 +3,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Nav, TabContainer, TabContent, TabPane } from "react-bootstrap";
-import { getShipmentById } from "@/services/drum-tracer/shipment.service";
+import { getShipment } from "@/services/shipment.service";
+import { SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
 import Spinner from "@/components/Spinner";
 import ErrorMessage from "@/components/ui/ErrorMessage/ErrorMessage";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
@@ -15,15 +16,15 @@ import { formatDateNL } from "@/utils/dateFormatter";
 
 export default function ShipmentDetailPage() {
   const params = useParams();
-  const id = Number(params?.id);
+  const id = String(params?.id ?? "");
 
   const {
     data: shipment,
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["dt-shipment", id],
-    queryFn: () => getShipmentById(id),
+    queryKey: ["shipment", id],
+    queryFn: () => getShipment(id),
     enabled: !!id,
   });
 
@@ -64,7 +65,10 @@ export default function ShipmentDetailPage() {
               </span>
             </div>
           </div>
-          <StatusBadge status={shipment.status} size="lg" />
+          <StatusBadge
+            status={SHIPMENT_STATUS_LABELS[shipment.status] ?? shipment.status}
+            size="lg"
+          />
         </div>
       </div>
 
@@ -75,12 +79,12 @@ export default function ShipmentDetailPage() {
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="drums">
-              Drums ({shipment.drum_ids.length})
+              Drums ({shipment.drums.length})
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="orders">
-              Orders ({shipment.order_ids.length})
+              Orders ({shipment.orders.length})
             </Nav.Link>
           </Nav.Item>
         </Nav>
@@ -97,39 +101,50 @@ export default function ShipmentDetailPage() {
                     />
                     <DetailRow
                       label="Destination"
-                      value={<SiteName siteId={shipment.destination_site_id} />}
+                      value={<SiteName siteId={shipment.destination_site} />}
                       icon="ri-map-pin-line"
                     />
                     <DetailRow
                       label="Invoice Number"
-                      value={shipment.invoice_number || "—"}
+                      value={shipment.invoice_no || "—"}
                       icon="ri-file-list-3-line"
                     />
                     <DetailRow
                       label="BL Number"
-                      value={shipment.bl_number || "—"}
+                      value={shipment.bl_no || "—"}
                       icon="ri-file-text-line"
                     />
                   </div>
                   <div className="col-md-6">
                     <DetailRow
                       label="Expected Arrival"
-                      value={formatDateNL(shipment.expected_arrival)}
+                      value={
+                        shipment.expected_arrival_date
+                          ? formatDateNL(shipment.expected_arrival_date)
+                          : "—"
+                      }
                       icon="ri-calendar-event-line"
                     />
                     <DetailRow
                       label="Status"
-                      value={<StatusBadge status={shipment.status} />}
+                      value={
+                        <StatusBadge
+                          status={
+                            SHIPMENT_STATUS_LABELS[shipment.status] ??
+                            shipment.status
+                          }
+                        />
+                      }
                       icon="ri-radar-line"
                     />
                     <DetailRow
                       label="Linked Orders"
-                      value={shipment.order_ids.length}
+                      value={shipment.orders.length}
                       icon="ri-clipboard-line"
                     />
                     <DetailRow
                       label="Linked Drums"
-                      value={shipment.drum_ids.length}
+                      value={shipment.drums.length}
                       icon="ri-box-3-line"
                     />
                   </div>

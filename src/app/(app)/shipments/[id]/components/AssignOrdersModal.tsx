@@ -1,4 +1,3 @@
-// src/app/(app)/shipments/[id]/components/AssignDrumsModal.tsx
 "use client";
 import { useState } from "react";
 import {
@@ -11,76 +10,65 @@ import {
   ModalHeader,
 } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getDrums, updateDrum } from "@/services/drum.service";
-import {
-  assignDrumsToShipment,
-  getShipmentDrumIds,
-} from "@/services/drum-tracer/shipment.service";
+import { getOrders, updateOrder } from "@/services/order.service";
+import { setShipmentOrders } from "@/services/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
 
-interface AssignDrumsModalProps {
+interface AssignOrdersModalProps {
   show: boolean;
   onHide: () => void;
-  shipmentId: number;
+  shipmentId: string;
+  currentOrderIds: string[];
 }
 
-export const AssignDrumsModal = ({
+export const AssignOrdersModal = ({
   show,
   onHide,
   shipmentId,
-}: AssignDrumsModalProps) => {
+  currentOrderIds,
+}: AssignOrdersModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
-  // The real /api/drums/ endpoint has no "assignment" filter (that concept
-  // doesn't exist server-side — Shipments are still local/mock). Instead:
-  // fetch real drums (optionally search-filtered), exclude ones already
-  // linked to *this* shipment locally, and treat any status other than
-  // AVAILABLE as a heuristic for "probably already spoken for".
-  const { data: linkedIds } = useQuery({
-    queryKey: ["shipment-drum-ids", shipmentId],
-    queryFn: () => getShipmentDrumIds(shipmentId),
-    enabled: show,
-  });
-
+  // /api/orders/ (confirmed) supports a real `status` filter — CREATED is
+  // the natural "not yet assigned to any shipment" state.
   const { data, isLoading } = useQuery({
-    queryKey: ["drums-for-assign", search],
-    queryFn: () => getDrums({ search }),
+    queryKey: ["orders-for-assign", search],
+    queryFn: () => getOrders({ search, status: "CREATED" }),
     enabled: show,
   });
 
-  const alreadyLinked = new Set(linkedIds?.results ?? []);
   const candidates = (data?.results ?? []).filter(
-    (d) => !alreadyLinked.has(d.id) && d.status === "AVAILABLE",
+    (o) => !currentOrderIds.includes(o.id),
   );
 
   const mutation = useMutation({
     mutationFn: async () => {
-      await assignDrumsToShipment(shipmentId, selected);
-      // Best-effort: reflect the link on the real drum too.
+      await setShipmentOrders(shipmentId, [...currentOrderIds, ...selected]);
+      // Best-effort: reflect the link on each real order too.
       await Promise.allSettled(
-        selected.map((id) => updateDrum(id, { status: "IN_SHIPMENT" })),
+        selected.map((id) =>
+          updateOrder(id, { status: "ASSIGNED_TO_SHIPMENT" }),
+        ),
       );
     },
     onSuccess: () => {
       showNotification({
-        message: `${selected.length} drum(s) assigned`,
+        message: `${selected.length} order(s) assigned`,
         variant: "success",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["shipment-drum-ids", shipmentId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["drums-for-assign"] });
-      queryClient.invalidateQueries({ queryKey: ["drums"] });
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["orders-for-assign"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
       setSelected([]);
       onHide();
     },
     onError: () =>
       showNotification({
-        message: "Failed to assign drums",
+        message: "Failed to assign orders",
         variant: "danger",
       }),
   });
@@ -93,12 +81,12 @@ export const AssignDrumsModal = ({
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
       <ModalHeader closeButton>
-        <h5 className="modal-title">Assign Drums to Shipment</h5>
+        <h5 className="modal-title">Assign Orders to Shipment</h5>
       </ModalHeader>
       <ModalBody>
         <InputGroup className="mb-3">
           <Form.Control
-            placeholder="Search drums by number..."
+            placeholder="Search orders by number..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -108,24 +96,26 @@ export const AssignDrumsModal = ({
           <Spinner />
         ) : candidates.length === 0 ? (
           <p className="text-muted text-center py-4">
-            No available drums to assign.
+            No unassigned orders to assign.
           </p>
         ) : (
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {candidates.map((d) => (
+            {candidates.map((o) => (
               <Form.Check
-                key={d.id}
+                key={o.id}
                 type="checkbox"
-                id={`drum-${d.id}`}
+                id={`order-${o.id}`}
                 className="border-bottom py-2"
-                checked={selected.includes(d.id)}
-                onChange={() => toggle(d.id)}
+                checked={selected.includes(o.id)}
+                onChange={() => toggle(o.id)}
                 label={
                   <span>
-                    <b>{d.drum_number}</b>{" "}
+                    <b>{o.order_number}</b>{" "}
                     <span className="text-muted small">
-                      · {d.container_no || "—"} · {d.length_kms} KMs · Net{" "}
-                      {d.net_weight_mt} MT
+                      · {o.client_details?.name ?? "Unknown"}
+                      {o.quantity != null
+                        ? ` · ${o.quantity} ${o.unit ?? ""}`.trim()
+                        : ""}
                     </span>
                   </span>
                 }
@@ -145,11 +135,11 @@ export const AssignDrumsModal = ({
         >
           {mutation.isPending
             ? "Assigning..."
-            : `Assign ${selected.length || ""} Drum(s)`}
+            : `Assign ${selected.length || ""} Order(s)`}
         </Button>
       </ModalFooter>
     </Modal>
   );
 };
 
-export default AssignDrumsModal;
+export default AssignOrdersModal;

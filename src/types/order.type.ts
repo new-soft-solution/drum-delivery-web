@@ -32,11 +32,15 @@ export interface OrderListParams {
   page_size?: number;
   ordering?: string;
   search?: string;
+  status?: string;
+  client?: string;
+  order_number?: string;
 }
 
 export type OrderListResponse = PaginatedResponse<Order>;
 
 export interface OrderFilterType {
   status?: string;
+  client?: string;
   [key: string]: unknown;
 }

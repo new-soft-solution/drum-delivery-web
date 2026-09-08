@@ -1,5 +1,5 @@
 "use client";
-import { Button, Form, Row, Col } from "react-bootstrap";
+import { Button, Col, Form, Row } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,7 +13,7 @@ import {
   createTruckDelivery,
   updateTruckDelivery,
 } from "@/services/drum-tracer/truck-delivery.service";
-import { getShipments } from "@/services/drum-tracer/shipment.service";
+import { getShipments } from "@/services/shipment.service";
 import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
@@ -24,20 +24,24 @@ interface TruckDeliveryFormProps {
   onSuccess: () => void;
 }
 
-export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: TruckDeliveryFormProps) => {
+export const TruckDeliveryForm = ({
+  item: delivery,
+  onCancel,
+  onSuccess,
+}: TruckDeliveryFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!delivery;
   const { showNotification } = useNotificationContext();
 
   const { data: shipmentsData } = useQuery({
-    queryKey: ["dt-shipments-all"],
-    queryFn: () => getShipments({ page_size: 200 }),
+    queryKey: ["shipments-for-truck-delivery-form"],
+    queryFn: () => getShipments({}),
   });
 
   const form = useForm<DTTruckDeliveryFormValues>({
     resolver: zodResolver(dtTruckDeliveryFormSchema),
     defaultValues: {
-      shipment_id: delivery?.shipment_id || 0,
+      shipment_id: delivery?.shipment_id || "",
       truck_number: delivery?.truck_number || "",
       license_plate: delivery?.license_plate || "",
       driver_name: delivery?.driver_name || "",
@@ -48,19 +52,30 @@ export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: Truck
     },
   });
 
-  const mutation = useMutation<unknown, NormalizedError, DTTruckDeliveryFormValues>({
+  const mutation = useMutation<
+    unknown,
+    NormalizedError,
+    DTTruckDeliveryFormValues
+  >({
     mutationFn: (payload) =>
-      isEdit && delivery?.id ? updateTruckDelivery(delivery.id, payload) : createTruckDelivery(payload),
+      isEdit && delivery?.id
+        ? updateTruckDelivery(delivery.id, payload)
+        : createTruckDelivery(payload),
     onSuccess: () => {
       showNotification({
-        message: isEdit ? "Truck delivery updated successfully" : "Truck delivery scheduled successfully",
+        message: isEdit
+          ? "Truck delivery updated successfully"
+          : "Truck delivery scheduled successfully",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["dt-truck-deliveries"] });
       onSuccess();
     },
     onError: (error) => {
-      showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      showNotification({
+        message: error.message || "Something went wrong!",
+        variant: "danger",
+      });
       applyServerErrors(error, form.setError);
     },
   });
@@ -77,7 +92,7 @@ export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: Truck
               {...form.register("shipment_id")}
               isInvalid={!!form.formState.errors.shipment_id}
             >
-              <option value={0}>Select a shipment</option>
+              <option value="">Select a shipment</option>
               {shipmentsData?.results.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.shipment_number}
@@ -107,19 +122,28 @@ export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: Truck
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>License Plate</Form.Label>
-            <Form.Control {...form.register("license_plate")} placeholder="e.g., ABC-123" />
+            <Form.Control
+              {...form.register("license_plate")}
+              placeholder="e.g., ABC-123"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Driver Name</Form.Label>
-            <Form.Control {...form.register("driver_name")} placeholder="Enter driver name" />
+            <Form.Control
+              {...form.register("driver_name")}
+              placeholder="Enter driver name"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Driver Phone</Form.Label>
-            <Form.Control {...form.register("driver_phone")} placeholder="e.g., +31 6 12345678" />
+            <Form.Control
+              {...form.register("driver_phone")}
+              placeholder="e.g., +31 6 12345678"
+            />
           </Form.Group>
         </Col>
         <Col md={isEdit ? 6 : 12}>
@@ -164,7 +188,11 @@ export const TruckDeliveryForm = ({ item: delivery, onCancel, onSuccess }: Truck
       </Row>
 
       <div className="d-flex justify-content-end gap-2">
-        <Button variant="outline-secondary" onClick={onCancel} disabled={mutation.isPending}>
+        <Button
+          variant="outline-secondary"
+          onClick={onCancel}
+          disabled={mutation.isPending}
+        >
           Cancel
         </Button>
         <Button variant="primary" type="submit" disabled={mutation.isPending}>
