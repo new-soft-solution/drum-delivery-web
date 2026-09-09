@@ -37,6 +37,7 @@ export interface Shipment {
 
 export interface ShipmentListParams {
   page?: number;
+  page_size?: number;
   ordering?: string;
   search?: string;
   bl_no?: string;

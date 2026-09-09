@@ -1,10 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQueries,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getOrders } from "@/services/order.service";
+import { getOrder, getOrders } from "@/services/order.service";
 import type { Order } from "@/types/order.type";
 import { QuickCreateOrderModal } from "./QuickCreateOrderModal";
 
@@ -33,27 +37,26 @@ const mapOrderToOption = (o: Order): Option => ({
   label: `${o.order_number} · ${o.client_details?.name ?? "Unknown"}`,
 });
 
-/**
- * Orders (a Shipment can carry many) are a multi-select version of the
- * same ClientPicker/SitePicker pattern: react-select, infinite scroll for
- * pagination, no per-keystroke network call, and a separate "New Order"
- * button for creating one inline instead of an inline creatable option.
- * Only CREATED (not yet assigned) orders are offered — matches the
- * existing AssignOrdersModal convention on the Shipment detail page.
- */
 export const OrderMultiPicker = ({
   value,
   onChange,
 }: OrderMultiPickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [seenIds, setSeenIds] = useState<string[]>(value);
+  const [prevValueKey, setPrevValueKey] = useState(value.join(","));
+  const valueKey = value.join(",");
+  if (valueKey !== prevValueKey) {
+    setPrevValueKey(valueKey);
+    setSeenIds((prev) => Array.from(new Set([...prev, ...value])));
+  }
 
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
       queryKey: ["orders-picker"],
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
-        getOrders({ page: pageParam, page_size: 20, status: "CREATED" }),
+        getOrders({ page: pageParam, status: "CREATED" }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
@@ -62,17 +65,48 @@ export const OrderMultiPicker = ({
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      staleTime: 60 * 1000,
+      // staleTime: 60 * 1000,
     });
 
-  const orders = useMemo(
-    () => (data?.pages ?? []).flatMap((p) => p?.results ?? []),
-    [data],
+  // De-duplicated by id up front — infinite-query pages can overlap if the
+  // underlying list shifts between page fetches (e.g. an order's status
+  // changes and it drops out of the CREATED filter mid-scroll).
+  const orders = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((o) => {
+      if (seen.has(o.id)) return false;
+      seen.add(o.id);
+      return true;
+    });
+  }, [data]);
+
+  // Resolve every id ever seen in this form session directly, regardless
+  // of whether it's CREATED or already loaded on a fetched page.
+  const missingIds = useMemo(
+    () => seenIds.filter((id) => !orders.some((o) => o.id === id)),
+    [seenIds, orders],
   );
-  const options: Option[] = useMemo(
-    () => orders.map(mapOrderToOption),
-    [orders],
-  );
+  const selectedOrderQueries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ["order", id],
+      queryFn: () => getOrder(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const resolvedSelectedOrders = selectedOrderQueries
+    .map((q) => q.data)
+    .filter((o): o is Order => !!o);
+
+  // Dedupe against the base list — an order that was fetched individually
+  // (because it wasn't loaded yet) can later also show up in `orders`
+  // once pagination reaches it; without this, it would render twice.
+  const options: Option[] = useMemo(() => {
+    const extra = resolvedSelectedOrders.filter(
+      (o) => !orders.some((base) => base.id === o.id),
+    );
+    return [...orders, ...extra].map(mapOrderToOption);
+  }, [orders, resolvedSelectedOrders]);
   const selected = options.filter((o) => value.includes(o.value));
 
   return (
