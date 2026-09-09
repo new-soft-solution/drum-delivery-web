@@ -1,10 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getClients } from "@/services/client.service";
+import { getClient, getClients } from "@/services/client.service";
 import type { Client } from "@/types/client.type";
 import { QuickCreateClientModal } from "./QuickCreateClientModal";
 
@@ -40,6 +44,7 @@ const mapClientToOption = (c: Client): Option => ({
   value: c.id,
   label: c.name,
 });
+
 export const ClientPicker = ({
   value,
   onChange,
@@ -48,6 +53,10 @@ export const ClientPicker = ({
 }: ClientPickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [lastSeenId, setLastSeenId] = useState(value);
+  if (value && value !== lastSeenId) {
+    setLastSeenId(value);
+  }
 
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -63,17 +72,39 @@ export const ClientPicker = ({
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      staleTime: 60 * 1000,
+      // staleTime: 60 * 1000,
     });
 
-  const clients = useMemo(
-    () => (data?.pages ?? []).flatMap((p) => p?.results ?? []),
-    [data],
-  );
-  const options: Option[] = useMemo(
-    () => clients.map(mapClientToOption),
-    [clients],
-  );
+  // De-duplicated by id up front — infinite-query pages can overlap if the
+  // underlying list shifts between page fetches.
+  const clients = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((c) => {
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }, [data]);
+
+  const isValueLoaded = !lastSeenId || clients.some((c) => c.id === lastSeenId);
+  const { data: selectedClient } = useQuery({
+    queryKey: ["client", lastSeenId],
+    queryFn: () => getClient(lastSeenId),
+    enabled: !!lastSeenId && !isValueLoaded,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Dedupe against the base list — a client that was fetched individually
+  // (because it wasn't loaded yet) can later also show up in `clients`
+  // once pagination reaches it; without this, it would render twice.
+  const options: Option[] = useMemo(() => {
+    const extra =
+      selectedClient && !clients.some((c) => c.id === selectedClient.id)
+        ? [selectedClient]
+        : [];
+    return [...clients, ...extra].map(mapClientToOption);
+  }, [clients, selectedClient]);
   const selected = options.find((o) => o.value === value) ?? null;
 
   return (
@@ -105,11 +136,11 @@ export const ClientPicker = ({
           </div>
           <Button
             variant="outline-primary"
-            className=" d-inline-flex align-items-center gap-1 flex-shrink-0 px-3"
+            className=" d-inline-flex align-items-center gap-1 flex-shrink-0 px-2"
             onClick={() => setShowCreateModal(true)}
           >
             <IconifyIcon icon="ri:add-line" width={16} height={16} />
-            <span className="fw-semibold small">New Client</span>
+            {/*<span className="fw-semibold small">New Client</span>*/}
           </Button>
         </div>
         {isFetchingNextPage && <Form.Text>Loading more…</Form.Text>}

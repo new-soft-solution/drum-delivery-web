@@ -1,10 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getSites } from "@/services/site.service";
+import { getSite, getSites } from "@/services/site.service";
 import type { Site } from "@/types/site.type";
 import { QuickCreateSiteModal } from "./QuickCreateSiteModal";
 
@@ -38,13 +42,6 @@ const selectStyles = (isInvalid?: boolean) => ({
 
 const mapSiteToOption = (s: Site): Option => ({ value: s.id, label: s.name });
 
-/**
- * Same pattern as ClientPicker (OrderForm): plain react-select, no
- * network call per keystroke (react-select's own local filtering of
- * already-loaded options), infinite scroll for pagination, and a
- * separate explicit "New Site" button that opens QuickCreateSiteModal
- * rather than an inline creatable option.
- */
 export const SitePicker = ({
   value,
   onChange,
@@ -53,6 +50,10 @@ export const SitePicker = ({
 }: SitePickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [lastSeenId, setLastSeenId] = useState(value);
+  if (value && value !== lastSeenId) {
+    setLastSeenId(value);
+  }
 
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -67,14 +68,39 @@ export const SitePicker = ({
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      staleTime: 60 * 1000,
+      // staleTime: 60 * 1000,
     });
 
-  const sites = useMemo(
-    () => (data?.pages ?? []).flatMap((p) => p?.results ?? []),
-    [data],
-  );
-  const options: Option[] = useMemo(() => sites.map(mapSiteToOption), [sites]);
+  // De-duplicated by id up front — infinite-query pages can overlap if the
+  // underlying list shifts between page fetches.
+  const sites = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((s) => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [data]);
+
+  const isValueLoaded = !lastSeenId || sites.some((s) => s.id === lastSeenId);
+  const { data: selectedSite } = useQuery({
+    queryKey: ["site", lastSeenId],
+    queryFn: () => getSite(lastSeenId),
+    enabled: !!lastSeenId && !isValueLoaded,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Dedupe against the base list — a site that was fetched individually
+  // (because it wasn't loaded yet) can later also show up in `sites` once
+  // pagination reaches it; without this, it would render twice.
+  const options: Option[] = useMemo(() => {
+    const extra =
+      selectedSite && !sites.some((s) => s.id === selectedSite.id)
+        ? [selectedSite]
+        : [];
+    return [...sites, ...extra].map(mapSiteToOption);
+  }, [sites, selectedSite]);
   const selected = options.find((o) => o.value === value) ?? null;
 
   return (

@@ -5,6 +5,7 @@ import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import { SiteName } from "@/components/ui/SiteName/SiteName";
 import { Shipment, SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
 import React from "react";
+import { formatDateNL } from "@/utils/dateFormatter";
 
 export const ShipmentDetails: React.FC<{ shipment: Shipment }> = ({
   shipment,
@@ -52,9 +53,7 @@ export const ShipmentDetails: React.FC<{ shipment: Shipment }> = ({
               label="Expected Arrival"
               value={
                 shipment.expected_arrival_date
-                  ? new Date(
-                      shipment.expected_arrival_date,
-                    ).toLocaleDateString()
+                  ? formatDateNL(shipment.expected_arrival_date)
                   : "—"
               }
               icon="ri-calendar-event-line"

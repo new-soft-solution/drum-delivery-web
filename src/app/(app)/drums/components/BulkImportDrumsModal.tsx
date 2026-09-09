@@ -13,6 +13,7 @@ export const TEMPLATE_FILE_PATH = "/drum-import-template.xlsx";
 interface BulkImportDrumsModalProps {
   show: boolean;
   onHide: () => void;
+  onImported?: () => void;
 }
 
 const MAX_FILE_SIZE_MB = 10;
@@ -27,6 +28,7 @@ const formatBytes = (bytes: number) => {
 export const BulkImportDrumsModal = ({
   show,
   onHide,
+  onImported,
 }: BulkImportDrumsModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
@@ -48,6 +50,7 @@ export const BulkImportDrumsModal = ({
       queryClient.invalidateQueries({ queryKey: ["drums"] });
       reset();
       onHide();
+      onImported?.();
     },
     onError: (error) => {
       const message =
