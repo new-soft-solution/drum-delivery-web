@@ -27,6 +27,7 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { formatDateNL } from "@/utils/dateFormatter";
 
 const EXPORT_COLUMNS = (
   siteNames: Map<string, string>,
@@ -58,9 +59,7 @@ const EXPORT_COLUMNS = (
   {
     header: "Expected Arrival",
     value: (s) =>
-      s.expected_arrival_date
-        ? new Date(s.expected_arrival_date).toLocaleDateString()
-        : "",
+      s.expected_arrival_date ? formatDateNL(s.expected_arrival_date) : "",
     xlsxWidth: 16,
     pdfWidth: 60,
   },
@@ -92,11 +91,11 @@ export const ShipmentTable = () => {
   const params = {
     ...buildQueryParams(),
     search: state.globalFilter || undefined,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
     ...state.filters,
   };
-  // /api/shipments/ (confirmed) supports search/ordering/page plus
-  // status, destination_site, expected_arrival_date_after/before,
-  // bl_no, invoice_no, shipment_number as dedicated filters.
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["shipments", params],
     queryFn: () =>
@@ -113,15 +112,16 @@ export const ShipmentTable = () => {
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
 
   const rows = data?.results || [];
 
-  // Shipments only store a real Site UUID, not its name — resolve every
-  // unique destination site referenced in the currently-loaded rows before
-  // exporting, since ExportColumn.value must be synchronous.
   const resolveSiteNames = useCallback(async (): Promise<
     Map<string, string>
   > => {
@@ -217,7 +217,7 @@ export const ShipmentTable = () => {
         accessorKey: "expected_arrival_date",
         cell: (cell: CellContext<Shipment, unknown>) => {
           const v = cell.getValue<string | null>();
-          return v ? new Date(v).toLocaleDateString() : "—";
+          return v ? formatDateNL(v) : "—";
         },
       },
       {

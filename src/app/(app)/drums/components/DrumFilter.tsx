@@ -14,7 +14,7 @@ interface FilterProps {
 const DrumFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
   return (
     <div className="row g-3">
-      <div className="col-12">
+      <div className="col-md-6">
         <Form.Group>
           <Form.Label>Status</Form.Label>
           <Form.Select
@@ -35,7 +35,7 @@ const DrumFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
           </Form.Select>
         </Form.Group>
       </div>
-      <div className="col-12">
+      <div className="col-md-6">
         <Form.Group>
           <Form.Label>Drum Number</Form.Label>
           <Form.Control

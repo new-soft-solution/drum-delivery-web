@@ -14,22 +14,7 @@ interface FilterProps {
 const SiteFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
   return (
     <div className="row g-3">
-      <div className="col-12">
-        <Form.Group>
-          <Form.Label>City</Form.Label>
-          <Form.Control
-            value={tempFilters.city || ""}
-            placeholder="e.g., Sande"
-            onChange={(e) =>
-              onTempFilterChange({
-                ...tempFilters,
-                city: e.target.value || undefined,
-              })
-            }
-          />
-        </Form.Group>
-      </div>
-      <div className="col-12">
+      <div className="col-md-6">
         <Form.Group>
           <Form.Label>Country</Form.Label>
           <CountrySelect
@@ -40,6 +25,21 @@ const SiteFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
               onTempFilterChange({
                 ...tempFilters,
                 country: value || undefined,
+              })
+            }
+          />
+        </Form.Group>
+      </div>
+      <div className="col-md-6">
+        <Form.Group>
+          <Form.Label>City</Form.Label>
+          <Form.Control
+            value={tempFilters.city || ""}
+            placeholder="e.g., Sande"
+            onChange={(e) =>
+              onTempFilterChange({
+                ...tempFilters,
+                city: e.target.value || undefined,
               })
             }
           />

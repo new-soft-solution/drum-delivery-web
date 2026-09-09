@@ -1,10 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQueries,
+  useQueryClient,
+} from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getDrums } from "@/services/drum.service";
+import { getDrum, getDrums } from "@/services/drum.service";
 import type { Drum } from "@/types/drum.type";
 import { QuickCreateDrumModal } from "./QuickCreateDrumModal";
 
@@ -30,19 +34,26 @@ const selectStyles = () => ({
 
 const mapDrumToOption = (d: Drum): Option => ({
   value: d.id,
-  label: `${d.drum_number} · ${d.length_kms} km · ${d.net_weight_mt} MT`,
+  label: `${d.drum_number} · ${d.container_no || "—"}`,
 });
 
 export const DrumMultiPicker = ({ value, onChange }: DrumMultiPickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [seenIds, setSeenIds] = useState<string[]>(value);
+  const [prevValueKey, setPrevValueKey] = useState(value.join(","));
+  const valueKey = value.join(",");
+  if (valueKey !== prevValueKey) {
+    setPrevValueKey(valueKey);
+    setSeenIds((prev) => Array.from(new Set([...prev, ...value])));
+  }
 
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
       queryKey: ["drums-picker"],
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
-        getDrums({ page: pageParam, page_size: 20, status: "AVAILABLE" }),
+        getDrums({ page: pageParam, status: "AVAILABLE" }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
@@ -51,14 +62,48 @@ export const DrumMultiPicker = ({ value, onChange }: DrumMultiPickerProps) => {
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      staleTime: 60 * 1000,
+      // staleTime: 60 * 1000,
     });
 
-  const drums = useMemo(
-    () => (data?.pages ?? []).flatMap((p) => p?.results ?? []),
-    [data],
+  // De-duplicated by id up front — infinite-query pages can overlap if the
+  // underlying list shifts between page fetches (e.g. a drum's status
+  // changes and it drops out of the AVAILABLE filter mid-scroll).
+  const drums = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    });
+  }, [data]);
+
+  // Resolve every id ever seen in this form session directly, regardless
+  // of whether it's AVAILABLE or already loaded on a fetched page.
+  const missingIds = useMemo(
+    () => seenIds.filter((id) => !drums.some((d) => d.id === id)),
+    [seenIds, drums],
   );
-  const options: Option[] = useMemo(() => drums.map(mapDrumToOption), [drums]);
+  const selectedDrumQueries = useQueries({
+    queries: missingIds.map((id) => ({
+      queryKey: ["drum", id],
+      queryFn: () => getDrum(id),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+  const resolvedSelectedDrums = selectedDrumQueries
+    .map((q) => q.data)
+    .filter((d): d is Drum => !!d);
+
+  // Dedupe against the base list — a drum that was fetched individually
+  // (because it wasn't loaded yet) can later also show up in `drums` once
+  // pagination reaches it; without this, it would render twice.
+  const options: Option[] = useMemo(() => {
+    const extra = resolvedSelectedDrums.filter(
+      (d) => !drums.some((base) => base.id === d.id),
+    );
+    return [...drums, ...extra].map(mapDrumToOption);
+  }, [drums, resolvedSelectedDrums]);
   const selected = options.filter((o) => value.includes(o.value));
 
   return (

@@ -11,6 +11,7 @@ import Spinner from "@/components/Spinner";
 
 import EmptyState from "@/components/ui/EmptyState/EmptyState";
 import AssignOrdersModal from "./AssignOrdersModal";
+import { QuickCreateOrderModal } from "@/app/(app)/shipments/components/QuickCreateOrderModal";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -23,6 +24,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
 
   // The real Shipment object carries `orders` (an array of Order UUIDs)
   // directly — there's no separate link endpoint anymore.
@@ -62,13 +64,40 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
     },
   });
 
+  // An order created from this tab is linked to this shipment right away
+  // — that's the point of creating it from here rather than from the main
+  // Orders page.
+  const linkMutation = useMutation({
+    mutationFn: (orderId: string) =>
+      setShipmentOrders(shipmentId, [...orderIds, orderId]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: () =>
+      showNotification({
+        message:
+          "Order created, but couldn't be linked to this shipment automatically — use Assign Orders.",
+        variant: "danger",
+      }),
+  });
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0">Orders in this Shipment</h5>
-        <Button size="sm" onClick={() => setShowAssign(true)}>
-          + Assign Orders
-        </Button>
+        <div className="d-flex gap-2">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => setShowAssign(true)}
+          >
+            + Assign Orders
+          </Button>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            + New Order
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -77,7 +106,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
         <EmptyState
           icon="ri:clipboard-line"
           title="No orders linked yet"
-          description="Assign purchase orders to this shipment to track what's being delivered."
+          description="Assign purchase orders to this shipment, or create a new one."
           actionLabel="Assign Orders"
           onAction={() => setShowAssign(true)}
         />
@@ -123,6 +152,15 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
         onHide={() => setShowAssign(false)}
         shipmentId={shipmentId}
         currentOrderIds={orderIds}
+      />
+
+      <QuickCreateOrderModal
+        show={showCreate}
+        onHide={() => setShowCreate(false)}
+        onCreated={(order) => {
+          setShowCreate(false);
+          linkMutation.mutate(order.id);
+        }}
       />
     </div>
   );
