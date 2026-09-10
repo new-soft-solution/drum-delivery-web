@@ -3,10 +3,17 @@
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import { ShipmentNumber } from "@/components/ui/ShipmentNumber/ShipmentNumber";
-import { DTTruckDelivery } from "@/types/drum-tracer/truck-delivery.type";
+import {
+  TRUCK_DELIVERY_STATUS_LABELS,
+  TruckDelivery,
+} from "@/types/truck-delivery.type";
 import React from "react";
+import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
 
-export const TruckDeliveryDetails: React.FC<{ delivery: DTTruckDelivery }> = ({
+const formatDateTime = (v?: string | null) =>
+  v ? new Date(v).toLocaleString() : "—";
+
+export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
   delivery,
 }) => {
   return (
@@ -22,7 +29,7 @@ export const TruckDeliveryDetails: React.FC<{ delivery: DTTruckDelivery }> = ({
             />
             <DetailRow
               label="Shipment"
-              value={<ShipmentNumber shipmentId={delivery.shipment_id} />}
+              value={<ShipmentNumber shipmentId={delivery.shipment} />}
               icon="ri-ship-line"
             />
             <DetailRow
@@ -30,8 +37,6 @@ export const TruckDeliveryDetails: React.FC<{ delivery: DTTruckDelivery }> = ({
               value={delivery.license_plate || "—"}
               icon="ri-car-line"
             />
-          </div>
-          <div className="col-md-6">
             <DetailRow
               label="Driver"
               value={delivery.driver_name || "—"}
@@ -42,10 +47,46 @@ export const TruckDeliveryDetails: React.FC<{ delivery: DTTruckDelivery }> = ({
               value={delivery.driver_phone || "—"}
               icon="ri-phone-line"
             />
+          </div>
+          <div className="col-md-6">
             <DetailRow
               label="Status"
-              value={<StatusBadge status={delivery.status} />}
+              value={
+                <StatusBadge
+                  status={
+                    TRUCK_DELIVERY_STATUS_LABELS[delivery.status] ??
+                    delivery.status
+                  }
+                />
+              }
               icon="ri-radar-line"
+            />
+            <DetailRow
+              label="Scheduled"
+              value={
+                delivery.scheduled_date
+                  ? formatDateNLAMPMSS(delivery.scheduled_date)
+                  : "—"
+              }
+              icon="ri-calendar-line"
+            />
+            <DetailRow
+              label="Actual Departure"
+              value={
+                delivery.actual_departure_date
+                  ? formatDateNLAMPMSS(delivery.actual_departure_date)
+                  : "—"
+              }
+              icon="ri-logout-box-line"
+            />
+            <DetailRow
+              label="Actual Arrival"
+              value={
+                delivery.actual_arrival_date
+                  ? formatDateNLAMPMSS(delivery.actual_arrival_date)
+                  : "—"
+              }
+              icon="ri-login-box-line"
             />
           </div>
         </div>
