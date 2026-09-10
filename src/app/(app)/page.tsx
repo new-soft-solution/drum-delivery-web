@@ -1,7 +1,5 @@
-// src/app/(app)/page.tsx
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
@@ -10,12 +8,9 @@ import { getClients } from "@/services/client.service";
 import { getOrders } from "@/services/order.service";
 import { getDrums } from "@/services/drum.service";
 import { getShipments } from "@/services/shipment.service";
+import { getTruckDeliveries } from "@/services/truck-delivery.service";
 import { SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
 import { SiteName } from "@/components/ui/SiteName/SiteName";
-
-interface MockDashboardData {
-  truckDeliveries: { total: number; scheduled: number };
-}
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -154,19 +149,10 @@ function StatusDonut({
 }
 
 export default function DashboardPage() {
-  const [mock, setMock] = useState<MockDashboardData | null>(null);
-
-  useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setMock);
-  }, []);
-
-  // Clients, Orders, Drums, and Shipments come from the real backend now —
-  // fetched client-side (via authApi, which attaches the real access
-  // token) rather than through the local mock /api/dashboard route, which
-  // has no way to authenticate against the live API. Only Truck
-  // Deliveries (still mock) come from that route.
+  // Clients, Orders, Drums, Shipments, and Truck Deliveries all come from
+  // the real backend now — fetched client-side (via authApi, which
+  // attaches the real access token). There's no local mock
+  // /api/dashboard route anymore; every entity is real.
   const { data: clientsData } = useQuery({
     queryKey: ["dashboard-clients"],
     queryFn: () => getClients({}),
@@ -182,6 +168,10 @@ export default function DashboardPage() {
   const { data: shipmentsData } = useQuery({
     queryKey: ["dashboard-shipments"],
     queryFn: () => getShipments({ ordering: "-created_at" }),
+  });
+  const { data: truckDeliveriesData } = useQuery({
+    queryKey: ["dashboard-truck-deliveries"],
+    queryFn: () => getTruckDeliveries({}),
   });
 
   const recentOrders = (ordersData?.results ?? []).slice(0, 5);
@@ -313,7 +303,8 @@ export default function DashboardPage() {
                   style={{ color: "#203975" }}
                 />
                 <span>
-                  {mock?.truckDeliveries.total ?? "—"} truck deliveries
+                  {truckDeliveriesData ? truckDeliveriesData.count : "—"} truck
+                  deliveries
                 </span>
               </Link>
             </div>
@@ -346,9 +337,8 @@ export default function DashboardPage() {
                 <p className="text-muted small mb-0">No orders yet.</p>
               ) : (
                 recentOrders.map((o) => (
-                  <Link
+                  <div
                     key={o.id}
-                    href="/orders"
                     className="d-flex align-items-center gap-3 py-2 border-bottom text-decoration-none text-dark"
                   >
                     <Avatar name={o.client_details?.name ?? "?"} size={34} />
@@ -364,7 +354,7 @@ export default function DashboardPage() {
                       status={ORDER_STATUS_LABELS[o.status] ?? o.status}
                       size="sm"
                     />
-                  </Link>
+                  </div>
                 ))
               )}
             </div>

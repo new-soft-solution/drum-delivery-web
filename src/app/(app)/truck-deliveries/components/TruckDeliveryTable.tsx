@@ -9,11 +9,12 @@ import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import {
   deleteTruckDelivery,
   getTruckDeliveries,
-} from "@/services/drum-tracer/truck-delivery.service";
+} from "@/services/truck-delivery.service";
 import {
-  DTTruckDelivery,
-  DTTruckDeliveryFilterType,
-} from "@/types/drum-tracer/truck-delivery.type";
+  TRUCK_DELIVERY_STATUS_LABELS,
+  TruckDelivery,
+  TruckDeliveryFilterType,
+} from "@/types/truck-delivery.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -27,10 +28,11 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
 
 const EXPORT_COLUMNS = (
   shipmentNumbers: Map<string, string>,
-): ExportColumn<DTTruckDelivery>[] => [
+): ExportColumn<TruckDelivery>[] => [
   {
     header: "Truck Number",
     value: (t) => t.truck_number,
@@ -45,7 +47,7 @@ const EXPORT_COLUMNS = (
   },
   {
     header: "Shipment",
-    value: (t) => shipmentNumbers.get(t.shipment_id) || t.shipment_id || "",
+    value: (t) => shipmentNumbers.get(t.shipment) || t.shipment || "",
     xlsxWidth: 18,
     pdfWidth: 65,
   },
@@ -63,11 +65,17 @@ const EXPORT_COLUMNS = (
   },
   {
     header: "Scheduled",
-    value: (t) => new Date(t.scheduled_at).toLocaleString(),
+    value: (t) =>
+      t.scheduled_date ? formatDateNLAMPMSS(t.scheduled_date) : "",
     xlsxWidth: 20,
     pdfWidth: 75,
   },
-  { header: "Status", value: (t) => t.status, xlsxWidth: 14, pdfWidth: 55 },
+  {
+    header: "Status",
+    value: (t) => TRUCK_DELIVERY_STATUS_LABELS[t.status] ?? t.status,
+    xlsxWidth: 14,
+    pdfWidth: 55,
+  },
   { header: "Notes", value: (t) => t.notes || "", xlsxWidth: 26, pdfWidth: 90 },
 ];
 
@@ -81,29 +89,33 @@ export const TruckDeliveryTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
-  } = useCRUDTable<DTTruckDelivery>(
-    "dt-truck-deliveries",
-    deleteTruckDelivery,
-    {
-      isEdit: true,
-      isView: true,
-      isDelete: true,
-      showCheckBox: true,
-    },
-  );
+  } = useCRUDTable<TruckDelivery>("truck-deliveries", deleteTruckDelivery, {
+    isEdit: true,
+    isView: true,
+    isDelete: true,
+    showCheckBox: true,
+  });
 
   const params = {
     ...buildQueryParams(),
     search: state.globalFilter || undefined,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
     ...state.filters,
   };
   const { data, isFetching, isLoading, error } = useQuery({
-    queryKey: ["dt-truck-deliveries", params],
+    queryKey: ["truck-deliveries", params],
     queryFn: () =>
       getTruckDeliveries({
         search: params.search,
         ordering: params.ordering,
-        status: state.filters.status as string,
+        status: state.filters.status as string | undefined,
+        shipment: state.filters.shipment as string | undefined,
+        scheduled_date__gte: state.filters.scheduled_date__gte as
+          string | undefined,
+        scheduled_date__lte: state.filters.scheduled_date__lte as
+          string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -118,14 +130,11 @@ export const TruckDeliveryTable = () => {
 
   const rows = data?.results || [];
 
-  // Truck Deliveries only store a real Shipment UUID, not its number —
-  // resolve every unique shipment referenced in the currently-loaded rows
-  // before exporting, since ExportColumn.value must be synchronous.
   const resolveShipmentNumbers = useCallback(async (): Promise<
     Map<string, string>
   > => {
     const ids = Array.from(
-      new Set(rows.map((t) => t.shipment_id).filter(Boolean)),
+      new Set(rows.map((t) => t.shipment).filter(Boolean)),
     );
     const entries = await Promise.all(
       ids.map(async (id) => {
@@ -176,43 +185,52 @@ export const TruckDeliveryTable = () => {
       { header: "Truck Number", accessorKey: "truck_number" },
       {
         header: "Shipment",
-        accessorKey: "shipment_id",
-        cell: (cell: CellContext<DTTruckDelivery, unknown>) => (
-          <ShipmentNumber shipmentId={cell.row.original.shipment_id} />
+        accessorKey: "shipment",
+        cell: (cell: CellContext<TruckDelivery, unknown>) => (
+          <ShipmentNumber shipmentId={cell.row.original.shipment} />
         ),
       },
       { header: "Driver", accessorKey: "driver_name" },
       {
         header: "Scheduled",
-        accessorKey: "scheduled_at",
-        cell: (cell: CellContext<DTTruckDelivery, unknown>) =>
-          new Date(cell.getValue<string>()).toLocaleString(),
+        accessorKey: "scheduled_date",
+        cell: (cell: CellContext<TruckDelivery, unknown>) => {
+          const v = cell.getValue<string | null>();
+          return v ? formatDateNLAMPMSS(v) : "—";
+        },
       },
       {
         header: "Status",
         accessorKey: "status",
-        cell: (cell: CellContext<DTTruckDelivery, unknown>) => (
-          <StatusBadge status={cell.getValue<string>()} />
-        ),
+        cell: (cell: CellContext<TruckDelivery, unknown>) => {
+          const status = cell.getValue<string>();
+          return (
+            <StatusBadge
+              status={
+                TRUCK_DELIVERY_STATUS_LABELS[
+                  status as keyof typeof TRUCK_DELIVERY_STATUS_LABELS
+                ] ?? status
+              }
+            />
+          );
+        },
       },
       ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
-  const initialFilters: DTTruckDeliveryFilterType = {};
+  const initialFilters: TruckDeliveryFilterType = {};
 
   return (
     <>
-      <CRUDTable<DTTruckDelivery, DTTruckDeliveryFilterType>
+      <CRUDTable<TruckDelivery, TruckDeliveryFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={
-          state as CRUDTableState<DTTruckDelivery, DTTruckDeliveryFilterType>
-        }
+        state={state as CRUDTableState<TruckDelivery, TruckDeliveryFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -258,7 +276,7 @@ export const TruckDeliveryTable = () => {
         onExcelExport={handleExcelExport}
       />
 
-      <DetailsModal<DTTruckDelivery>
+      <DetailsModal<TruckDelivery>
         show={state.modalState.showViewEditModal}
         onHide={closeModal}
         item={state.modalState.selectedItem ?? undefined}
@@ -266,7 +284,7 @@ export const TruckDeliveryTable = () => {
         isLoading={isLoading}
         error={error}
         onSuccess={() =>
-          queryClient.invalidateQueries({ queryKey: ["dt-truck-deliveries"] })
+          queryClient.invalidateQueries({ queryKey: ["truck-deliveries"] })
         }
         viewComponent={({ item }) => <TruckDeliveryDetails delivery={item} />}
         formComponent={TruckDeliveryForm}
