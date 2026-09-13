@@ -41,9 +41,12 @@ const TopNavigationBar = () => {
     <div className="topbar d-print-none">
       <div className="container-xxl">
         <nav
-          className={clsx("topbar-custom d-flex justify-content-between", {
-            "nav-sticky": scrollY >= 50,
-          })}
+          // className={clsx("topbar-custom d-flex justify-content-between", {
+          //   "nav-sticky": scrollY >= 50,
+          // })}
+          className={clsx(
+            "topbar-custom d-flex justify-content-between nav-sticky",
+          )}
           id="topbar-custom"
         >
           <ul className="topbar-item list-unstyled d-inline-flex align-items-center mb-0">
@@ -87,12 +90,17 @@ const TopNavigationBar = () => {
                     </span>
                   </span>
                 </Dropdown.Toggle>
-                <Dropdown.Menu>
+                <Dropdown.Menu className="p-0">
                   <Dropdown.Item as={Link} href="/profile">
                     <IconifyIcon icon="ri:user-line" className="me-2" />
                     My Profile
                   </Dropdown.Item>
-                  <Dropdown.Divider />
+                  <Dropdown.Divider className="m-0" />
+                  <Dropdown.Item as={Link} href="/quick-order">
+                    <IconifyIcon icon="ri:add-line" className="me-2" />
+                    Quick Order
+                  </Dropdown.Item>
+                  <Dropdown.Divider className="m-0" />
                   <Dropdown.Item onClick={handleLogout} className="text-danger">
                     <IconifyIcon icon="ri:logout-box-r-line" className="me-2" />
                     Logout

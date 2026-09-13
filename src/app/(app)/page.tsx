@@ -213,11 +213,14 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/shipments" className="btn btn-sm btn-outline-secondary">
-            <IconifyIcon icon="ri:ship-line" className="me-1" /> View Shipments
-          </Link>
-          <Link href="/orders" className="btn btn-sm btn-primary">
-            <IconifyIcon icon="ri:add-line" className="me-1" /> View Orders
+          <Link href="/quick-order" className="btn btn-primary">
+            <IconifyIcon
+              icon="ri:add-line"
+              className="me-1"
+              width={20}
+              height={20}
+            />{" "}
+            Quick Orders
           </Link>
         </div>
       </div>
