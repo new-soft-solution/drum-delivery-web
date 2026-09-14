@@ -1,10 +1,11 @@
 "use client";
+import { useEffect } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
-import { createOrder } from "@/services/order.service";
+import { createOrder, getOrder, updateOrder } from "@/services/order.service";
 import { orderFormSchema, OrderFormValues } from "@/types/schemas/order.schema";
 import type { Order } from "@/types/order.type";
 import type { NormalizedError } from "@/types/error.type";
@@ -17,61 +18,79 @@ interface StepOrderProps {
   state: QuickOrderState;
   onCreated: (orderId: string, orderNumber: string) => void;
 }
-
 export const QuickOrderStepOrder = ({ state, onCreated }: StepOrderProps) => {
+  const isEdit = !!state.orderId;
   const { showNotification } = useNotificationContext();
+
+  const { data: existingOrder, isLoading: isLoadingOrder } = useQuery({
+    queryKey: ["order", state.orderId],
+    queryFn: () => getOrder(state.orderId as string),
+    enabled: isEdit,
+  });
 
   const form = useForm<OrderFormValues>({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       client: "",
+      po_number: "",
       description: "",
       quantity: undefined,
       unit: "",
     },
   });
 
+  useEffect(() => {
+    if (existingOrder) {
+      form.reset({
+        client: existingOrder.client,
+        po_number: existingOrder.po_number || "",
+        description: existingOrder.description || "",
+        quantity: existingOrder.quantity ?? undefined,
+        unit: existingOrder.unit || "",
+      });
+    }
+  }, [existingOrder, form]);
+
   const clientValue = useWatch({ control: form.control, name: "client" });
 
   const mutation = useMutation<Order, NormalizedError, OrderFormValues>({
-    mutationFn: (payload) => createOrder(payload),
+    mutationFn: (payload) =>
+      state.orderId
+        ? updateOrder(state.orderId, payload)
+        : createOrder(payload),
     onSuccess: (order) => {
       showNotification({
-        message: `Order ${order.order_number} created`,
+        message: isEdit
+          ? `Order ${order.order_number} updated`
+          : `Order ${order.order_number} created`,
         variant: "success",
       });
       onCreated(order.id, order.order_number);
     },
     onError: (error) => {
       showNotification({
-        message: error.message || "Failed to create order",
+        message:
+          error.message ||
+          (isEdit ? "Failed to update order" : "Failed to create order"),
         variant: "danger",
       });
       applyServerErrors(error, form.setError);
     },
   });
 
-  if (state.orderId) {
+  if (isEdit && isLoadingOrder) {
     return (
       <div className="text-center py-4">
-        <p className="text-muted mb-1">
-          Order already created for this Quick Order:
-        </p>
-        <h5 className="fw-bold">{state.orderNumber}</h5>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => onCreated(state.orderId!, state.orderNumber!)}
-        >
-          Continue to Drums
-        </Button>
+        <Spinner />
       </div>
     );
   }
 
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
-      <h6 className="fw-bold mb-3">Step 1 — Create the Order</h6>
+      <h6 className="fw-bold mb-3">
+        Step 1 — {isEdit ? "Edit the Order" : "Create the Order"}
+      </h6>
       <ClientPicker
         value={clientValue}
         onChange={(clientId) =>
@@ -86,6 +105,15 @@ export const QuickOrderStepOrder = ({ state, onCreated }: StepOrderProps) => {
       <Row>
         <Col md={6}>
           <Form.Group className="mb-3">
+            <Form.Label>PO Number</Form.Label>
+            <Form.Control
+              {...form.register("po_number")}
+              placeholder="Customer's purchase order number (optional)"
+            />
+          </Form.Group>
+        </Col>
+        <Col md={3}>
+          <Form.Group className="mb-3">
             <Form.Label>Quantity</Form.Label>
             <Form.Control
               type="number"
@@ -94,7 +122,7 @@ export const QuickOrderStepOrder = ({ state, onCreated }: StepOrderProps) => {
             />
           </Form.Group>
         </Col>
-        <Col md={6}>
+        <Col md={3}>
           <Form.Group className="mb-3">
             <Form.Label>Unit</Form.Label>
             <Form.Control
@@ -118,9 +146,11 @@ export const QuickOrderStepOrder = ({ state, onCreated }: StepOrderProps) => {
         <Button variant="primary" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? (
             <div className="d-flex align-items-center justify-content-center gap-1">
-              <span>Creating...</span>
+              <span>{isEdit ? "Updating..." : "Creating..."}</span>
               <Spinner color="white" size="sm" className="me-2" />
             </div>
+          ) : isEdit ? (
+            "Update Order & Continue"
           ) : (
             "Create Order & Continue"
           )}

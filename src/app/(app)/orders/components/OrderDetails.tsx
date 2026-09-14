@@ -26,6 +26,12 @@ export const OrderDetails: React.FC<{ order: Order }> = ({ order }) => {
               icon="ri-file-list-3-line"
             />
             <DetailRow
+              label="PO Number"
+              value={order.po_number || "—"}
+              icon="ri-file-paper-2-line"
+            />
+
+            <DetailRow
               label="Client"
               value={order.client_details?.name || "—"}
               icon="ri-building-line"

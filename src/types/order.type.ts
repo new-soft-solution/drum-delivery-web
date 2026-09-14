@@ -20,6 +20,7 @@ export interface Order {
   is_active: boolean;
   is_deleted: boolean;
   order_number: string; // read-only, server-generated
+  po_number?: string | null; // customer's own PO reference — optional
   description?: string | null;
   quantity?: number | null;
   unit?: string | null;

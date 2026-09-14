@@ -37,6 +37,12 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
     pdfWidth: 80,
   },
   {
+    header: "PO Number",
+    value: (o) => o.po_number || "",
+    xlsxWidth: 20,
+    pdfWidth: 75,
+  },
+  {
     header: "Client",
     value: (o) => o.client_details?.name ?? "Unknown",
     xlsxWidth: 24,
@@ -145,6 +151,11 @@ export const OrderTable = () => {
     () => [
       ...getDefaultColumns.slice(0, -1),
       { header: "Order Number", accessorKey: "order_number" },
+      {
+        header: "PO Number",
+        cell: (cell: CellContext<Order, unknown>) =>
+          cell.row.original.po_number || <span className="text-muted">—</span>,
+      },
       {
         header: "Client",
         cell: (cell: CellContext<Order, unknown>) => {
