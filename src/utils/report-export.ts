@@ -161,7 +161,7 @@ export async function exportToPdf<T>(
     pageFormat = "a4",
     marginLeft = 40,
     marginRight = 40,
-    startY = 98,
+    startY = 76,
     brand,
     useColumnWidths = true,
     watermarkText: watermarkTextOpt,
@@ -325,7 +325,7 @@ export async function exportToPdf<T>(
   }
 
   autoTable(doc, {
-    startY: Math.max(startY, headerBottomY + 18),
+    startY: Math.max(startY, headerBottomY + 10),
     margin: { left: marginLeft, right: marginRight },
     tableWidth: contentWidth,
     theme: "grid",
