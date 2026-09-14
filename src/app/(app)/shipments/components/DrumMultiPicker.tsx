@@ -34,7 +34,7 @@ const selectStyles = () => ({
 
 const mapDrumToOption = (d: Drum): Option => ({
   value: d.id,
-  label: `${d.drum_number} · ${d.container_no || "—"}`,
+  label: `${d.drum_number}`,
 });
 
 export const DrumMultiPicker = ({ value, onChange }: DrumMultiPickerProps) => {
