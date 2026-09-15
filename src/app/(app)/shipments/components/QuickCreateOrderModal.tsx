@@ -26,14 +26,6 @@ interface QuickCreateOrderModalProps {
   onHide: () => void;
   onCreated: (order: Order) => void;
 }
-
-/**
- * Trimmed create-order form for the "no matching order, create one
- * inline" flow from OrderMultiPicker. Reuses the same ClientPicker as
- * the full OrderForm (client is the only required field on the real
- * Order schema) — quantity/unit/description can be filled in later from
- * the Orders page.
- */
 export const QuickCreateOrderModal = ({
   show,
   onHide,
@@ -45,6 +37,7 @@ export const QuickCreateOrderModal = ({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       client: "",
+      po_number: "",
       description: "",
       quantity: undefined,
       unit: "",
@@ -62,6 +55,7 @@ export const QuickCreateOrderModal = ({
       });
       form.reset({
         client: "",
+        po_number: "",
         description: "",
         quantity: undefined,
         unit: "",
@@ -100,6 +94,13 @@ export const QuickCreateOrderModal = ({
             isInvalid={!!form.formState.errors.client}
             errorMessage={form.formState.errors.client?.message}
           />
+          <Form.Group className="mb-3">
+            <Form.Label>PO Number</Form.Label>
+            <Form.Control
+              {...form.register("po_number")}
+              placeholder="Customer's purchase order number (optional)"
+            />
+          </Form.Group>
           <Row>
             <Col md={6}>
               <Form.Group className="mb-3">

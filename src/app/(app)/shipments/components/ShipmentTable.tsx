@@ -28,6 +28,7 @@ import {
   exportToPdf,
 } from "@/utils/report-export";
 import { formatDateNL } from "@/utils/dateFormatter";
+import { Button } from "react-bootstrap";
 
 const EXPORT_COLUMNS = (
   siteNames: Map<string, string>,
@@ -81,6 +82,8 @@ export const ShipmentTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
+    handleDelete,
+    handleEdit,
   } = useCRUDTable<Shipment>("shipments", deleteShipment, {
     isEdit: true,
     isView: true,
@@ -236,7 +239,36 @@ export const ShipmentTable = () => {
           );
         },
       },
-      ...getDefaultColumns.slice(-1),
+      {
+        header: "Actions",
+        cell: ({ row }: { row: { original: Shipment } }) => {
+          return (
+            <div className="d-flex align-items-center gap-2">
+              <Link href={`/shipments/${row.original.id}`}>
+                <IconifyIcon icon="mdi:eye-outline" />
+              </Link>
+
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => handleEdit(row.original)}
+              >
+                <IconifyIcon icon="mdi:pencil-outline" />
+              </Button>
+
+              <Button
+                variant="link"
+                size="sm"
+                className="text-danger"
+                onClick={() => handleDelete(row.original)}
+              >
+                <IconifyIcon icon="mdi:trash-can-outline" />
+              </Button>
+            </div>
+          );
+        },
+      },
+      // ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
