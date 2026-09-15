@@ -17,6 +17,7 @@ type Option = { value: string; label: string };
 interface DrumMultiPickerProps {
   value: string[];
   onChange: (drumIds: string[]) => void;
+  isAdd?: boolean;
 }
 
 const selectMenuPortalTarget =
@@ -37,7 +38,11 @@ const mapDrumToOption = (d: Drum): Option => ({
   label: `${d.drum_number}`,
 });
 
-export const DrumMultiPicker = ({ value, onChange }: DrumMultiPickerProps) => {
+export const DrumMultiPicker = ({
+  value,
+  onChange,
+  isAdd = true,
+}: DrumMultiPickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [seenIds, setSeenIds] = useState<string[]>(value);
@@ -131,14 +136,16 @@ export const DrumMultiPicker = ({ value, onChange }: DrumMultiPickerProps) => {
               styles={selectStyles()}
             />
           </div>
-          <Button
-            variant="outline-primary"
-            className="d-inline-flex align-items-center gap-1 flex-shrink-0 px-2"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <IconifyIcon icon="ri:add-line" width={16} height={16} />
-            {/*<span className="fw-semibold small">New Drum</span>*/}
-          </Button>
+          {isAdd && (
+            <Button
+              variant="outline-primary"
+              className="d-inline-flex align-items-center gap-1 flex-shrink-0 px-2"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <IconifyIcon icon="ri:add-line" width={16} height={16} />
+              {/*<span className="fw-semibold small">New Drum</span>*/}
+            </Button>
+          )}
         </div>
         {isFetchingNextPage && <Form.Text>Loading more…</Form.Text>}
       </Form.Group>

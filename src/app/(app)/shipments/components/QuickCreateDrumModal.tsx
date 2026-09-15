@@ -14,7 +14,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
 import { createDrum } from "@/services/drum.service";
-import { drumFormSchema, DrumFormValues } from "@/types/schemas/drum.schema";
+import {
+  drumFormBaseSchema,
+  DrumFormValues,
+  withGrossWeightCheck,
+} from "@/types/schemas/drum.schema";
 import type { Drum } from "@/types/drum.type";
 import type { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
@@ -46,12 +50,14 @@ export const QuickCreateDrumModal = ({
 
   const form = useForm<QuickDrumFields>({
     resolver: zodResolver(
-      drumFormSchema.pick({
-        drum_number: true,
-        length_kms: true,
-        net_weight_mt: true,
-        gross_weight_mt: true,
-      }),
+      withGrossWeightCheck(
+        drumFormBaseSchema.pick({
+          drum_number: true,
+          length_kms: true,
+          net_weight_mt: true,
+          gross_weight_mt: true,
+        }),
+      ),
     ),
     defaultValues: {
       drum_number: "",

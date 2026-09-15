@@ -9,65 +9,28 @@ import axios, {
 } from "axios";
 import { isJwtExpired } from "@/lib/jwt";
 
-// This backend (drum-delivery-api.onrender.com, confirmed from its
-// schema.yaml) namespaces every route directly under `/api/...` — no
-// `/api/v1` version prefix. Every service call below therefore includes
-// the leading `/api/...` itself; this just strips a trailing slash from
-// whatever's configured.
-const normalizeBaseURL = (rawBaseURL: string): string => (rawBaseURL || "").trim().replace(/\/+$/, "");
-
-// NOTE: this must be NEXT_PUBLIC_* — axios runs in the browser here, calling
-// the real backend directly (CORS), not through a Next.js API route.
+const normalizeBaseURL = (rawBaseURL: string): string =>
+  (rawBaseURL || "").trim().replace(/\/+$/, "");
 const baseURL = normalizeBaseURL(process.env.NEXT_PUBLIC_API_BASE_URL || "");
-// const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
-// Public instance — no auth header. Used for login, refresh, forgot/reset
-// password, register: anything that must work without a session.
-const api: AxiosInstance = axios.create({
-  baseURL,
-  // headers: {
-  //   "X-API-KEY": API_KEY,
-  // },
-});
-
-// Authenticated instance — every other call goes through this one.
-const authApi: AxiosInstance = axios.create({
-  baseURL,
-  // headers: {
-  //   // "X-API-KEY": API_KEY,
-  // },
-});
+const api: AxiosInstance = axios.create({ baseURL });
+const authApi: AxiosInstance = axios.create({ baseURL });
 
 if (typeof window !== "undefined") {
-  // ──────────────────────────────────────────────────────────────────────
-  // Request interceptor
-  //  1. Attach the current access token.
-  //  2. Proactively refresh first if it's already expired (or about to be)
-  //     rather than waiting for the backend to say so with a 401 — there's
-  //     no NextAuth `jwt()` callback doing this for us anymore, so it has
-  //     to happen here.
-  // ──────────────────────────────────────────────────────────────────────
-  authApi.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
-    const { session } = useSessionStore.getState();
-    if (session?.accessToken && isJwtExpired(session.accessToken)) {
-      await refreshTokens();
-    }
-    const latest = useSessionStore.getState().session;
-    if (latest?.accessToken) {
-      config.headers.Authorization = `Bearer ${latest.accessToken}`;
-    }
-    return config;
-  });
+  authApi.interceptors.request.use(
+    async (config: InternalAxiosRequestConfig) => {
+      const { session } = useSessionStore.getState();
+      if (session?.accessToken && isJwtExpired(session.accessToken)) {
+        await refreshTokens();
+      }
+      const latest = useSessionStore.getState().session;
+      if (latest?.accessToken) {
+        config.headers.Authorization = `Bearer ${latest.accessToken}`;
+      }
+      return config;
+    },
+  );
 
-  // ──────────────────────────────────────────────────────────────────────
-  // Response interceptor — reactive refresh on 401 as a fallback (covers a
-  // token that expires mid-flight, or a backend clock skew the proactive
-  // check didn't catch).
-  //
-  //  - Concurrent 401s share a single in-flight refresh promise.
-  //  - `_retried` prevents infinite loops.
-  //  - On failure, clear the session and hard-redirect to /login.
-  // ──────────────────────────────────────────────────────────────────────
   let isLoggingOut = false;
 
   const performLogoutAndRedirect = () => {
@@ -75,11 +38,6 @@ if (typeof window !== "undefined") {
     isLoggingOut = true;
     useSessionStore.getState().clearSession();
     if (!window.location.pathname.startsWith("/login")) {
-      // A hard redirect (not next/navigation's router) is intentional here:
-      // this runs inside an axios interceptor, outside any React component,
-      // so there's no router instance available — and a full reload is
-      // exactly what we want anyway to guarantee every in-memory bit of
-      // stale session state is gone.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.href = "/login";
     }
@@ -89,8 +47,7 @@ if (typeof window !== "undefined") {
     (response) => response,
     async (error: AxiosError) => {
       const originalRequest = error.config as
-        | (InternalAxiosRequestConfig & { _retried?: boolean })
-        | undefined;
+        (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
       const status = error.response?.status;
 
       if (status !== 401 || !originalRequest || originalRequest._retried) {
@@ -102,7 +59,10 @@ if (typeof window !== "undefined") {
       if (newAccessToken) {
         const replay: AxiosRequestConfig = {
           ...originalRequest,
-          headers: { ...originalRequest.headers, Authorization: `Bearer ${newAccessToken}` },
+          headers: {
+            ...originalRequest.headers,
+            Authorization: `Bearer ${newAccessToken}`,
+          },
         };
         return authApi(replay);
       }
@@ -113,8 +73,6 @@ if (typeof window !== "undefined") {
   );
 }
 
-// Shared in-flight refresh promise so concurrent 401s / expiry checks never
-// spend the same (rotating) refresh token twice.
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshTokens(): Promise<string | null> {
@@ -124,8 +82,6 @@ async function refreshTokens(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        // Lazy import to avoid a require cycle (auth.service imports `api`
-        // from this file).
         const { refreshAccessToken } = await import("./auth/auth.service");
         const result = await refreshAccessToken(session.refreshToken);
         const access = result.access;
@@ -146,9 +102,6 @@ async function refreshTokens(): Promise<string | null> {
   return refreshPromise;
 }
 
-// Reusable error normalizer
-// Known non-field keys that show up at the response root alongside (or
-// instead of) real per-field errors — never treated as a field name.
 const RESPONSE_META_KEYS = new Set([
   "message",
   "detail",
@@ -160,15 +113,9 @@ const RESPONSE_META_KEYS = new Set([
   "__all__",
 ]);
 
-/**
- * DRF's *default* validation-error response has no wrapper at all — it's
- * just `{ field_name: ["message"], other_field: ["message"] }` directly at
- * the response root. Some backends additionally (or instead) nest that
- * under an `errors` key. This backend's actual 400-response shape isn't
- * confirmed by its schema.yaml (that only documents success responses), so
- * both conventions are checked here rather than assuming one.
- */
-function extractFieldErrors(data: unknown): Record<string, unknown> | undefined {
+function extractFieldErrors(
+  data: unknown,
+): Record<string, unknown> | undefined {
   if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
 
@@ -177,7 +124,9 @@ function extractFieldErrors(data: unknown): Record<string, unknown> | undefined 
   }
 
   const candidateEntries = Object.entries(obj).filter(
-    ([key, value]) => !RESPONSE_META_KEYS.has(key) && (Array.isArray(value) || typeof value === "string"),
+    ([key, value]) =>
+      !RESPONSE_META_KEYS.has(key) &&
+      (Array.isArray(value) || typeof value === "string"),
   );
   if (candidateEntries.length > 0) {
     return Object.fromEntries(candidateEntries);
@@ -186,11 +135,33 @@ function extractFieldErrors(data: unknown): Record<string, unknown> | undefined 
   return undefined;
 }
 
+/**
+ * `non_field_errors` (and its older DRF alias `__all__`) is how DRF reports
+ * a validation error that isn't tied to any single field — e.g. a
+ * cross-field check like "gross weight must be >= net weight". It's
+ * deliberately excluded from extractFieldErrors above (it isn't a real
+ * field name), but that means it was never being surfaced as a message
+ * anywhere — every such error silently fell through to the generic
+ * "An unexpected error occurred" fallback. This picks it up as a message
+ * source in its own right.
+ */
+function extractNonFieldError(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const obj = data as Record<string, unknown>;
+  const candidate = obj.non_field_errors ?? obj.__all__;
+  if (Array.isArray(candidate) && candidate.length > 0)
+    return String(candidate[0]);
+  if (typeof candidate === "string") return candidate;
+  return undefined;
+}
+
 const handleApiError = (error: unknown, special?: string): NormalizedError => {
   const err = error as AxiosError<{
     message?: string | string[];
     detail?: string;
     errors?: Record<string, string[]>;
+    non_field_errors?: string[];
+    __all__?: string[];
   }>;
 
   if (!err.response) {
@@ -203,14 +174,18 @@ const handleApiError = (error: unknown, special?: string): NormalizedError => {
 
   const { status, data } = err.response;
   const fieldErrors = extractFieldErrors(data);
+  const nonFieldError = extractNonFieldError(data);
   let message = "An unexpected error occurred";
 
   if (typeof data?.message === "string") message = data.message;
   else if (Array.isArray(data?.message)) message = data.message[0];
   else if (typeof data?.detail === "string") message = data.detail;
+  else if (nonFieldError) message = nonFieldError;
   else if (fieldErrors) {
     const firstValue = Object.values(fieldErrors)[0];
-    message = Array.isArray(firstValue) ? String(firstValue[0]) : String(firstValue ?? message);
+    message = Array.isArray(firstValue)
+      ? String(firstValue[0])
+      : String(firstValue ?? message);
   } else if (err.response.statusText) message = err.response.statusText;
 
   return {

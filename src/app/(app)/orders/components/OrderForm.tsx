@@ -38,6 +38,7 @@ export const OrderForm = ({
     resolver: zodResolver(orderFormSchema),
     defaultValues: {
       client: order?.client || "",
+      po_number: order?.po_number || "",
       description: order?.description || "",
       quantity: order?.quantity ?? undefined,
       unit: order?.unit || "",
@@ -75,7 +76,7 @@ export const OrderForm = ({
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
       <Row>
-        <Col md={12}>
+        <Col md={6}>
           <ClientPicker
             value={clientValue}
             onChange={(clientId) =>
@@ -87,6 +88,19 @@ export const OrderForm = ({
             isInvalid={!!form.formState.errors.client}
             errorMessage={form.formState.errors.client?.message}
           />
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>PO Number</Form.Label>
+            <Form.Control
+              {...form.register("po_number")}
+              isInvalid={!!form.formState.errors.po_number}
+              placeholder="Enter PO number"
+            />
+            <Form.Control.Feedback type="invalid">
+              {form.formState.errors.po_number?.message}
+            </Form.Control.Feedback>
+          </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
@@ -108,7 +122,7 @@ export const OrderForm = ({
           </Form.Group>
         </Col>
         {isEdit && (
-          <Col md={12}>
+          <Col md={6}>
             <Form.Group className="mb-3">
               <Form.Label>Status</Form.Label>
               <Form.Select {...form.register("status")}>
