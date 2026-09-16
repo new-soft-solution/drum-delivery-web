@@ -58,7 +58,7 @@ export const DrumMultiPicker = ({
       queryKey: ["drums-picker"],
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
-        getDrums({ page: pageParam, status: "AVAILABLE" }),
+        getDrums({ page: pageParam, page_size: 20, status: "AVAILABLE" }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
