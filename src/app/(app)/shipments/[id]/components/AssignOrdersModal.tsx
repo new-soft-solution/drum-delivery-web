@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
   Form,
@@ -9,7 +9,11 @@ import {
   ModalFooter,
   ModalHeader,
 } from "react-bootstrap";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { getOrders, updateOrder } from "@/services/order.service";
 import { setShipmentOrders } from "@/services/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
@@ -32,23 +36,65 @@ export const AssignOrdersModal = ({
   const { showNotification } = useNotificationContext();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // /api/orders/ (confirmed) supports a real `status` filter — CREATED is
-  // the natural "not yet assigned to any shipment" state.
-  const { data, isLoading } = useQuery({
-    queryKey: ["orders-for-assign", search],
-    queryFn: () => getOrders({ search, status: "CREATED" }),
-    enabled: show,
-  });
+  const effectiveSearch = search.trim().length >= 3 ? search.trim() : "";
 
-  const candidates = (data?.results ?? []).filter(
-    (o) => !currentOrderIds.includes(o.id),
-  );
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: ["orders-for-assign", effectiveSearch],
+      initialPageParam: 1,
+      queryFn: ({ pageParam }) =>
+        getOrders({
+          search: effectiveSearch || undefined,
+          status: "CREATED",
+          page: pageParam,
+          page_size: 20,
+        }),
+      getNextPageParam: (lastPage, allPages) => {
+        const loaded = allPages.reduce(
+          (n, p) => n + (p?.results?.length ?? 0),
+          0,
+        );
+        const total = lastPage?.count ?? 0;
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      enabled: show,
+    });
+
+  const orders = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((o) => {
+      if (seen.has(o.id)) return false;
+      seen.add(o.id);
+      return true;
+    });
+  }, [data]);
+
+  const candidates = orders.filter((o) => !currentOrderIds.includes(o.id));
+
+  useEffect(() => {
+    const root = scrollContainerRef.current;
+    const sentinel = sentinelRef.current;
+    if (!root || !sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { root, rootMargin: "80px", threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, candidates.length]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       await setShipmentOrders(shipmentId, [...currentOrderIds, ...selected]);
-      // Best-effort: reflect the link on each real order too.
       await Promise.allSettled(
         selected.map((id) =>
           updateOrder(id, { status: "ASSIGNED_TO_SHIPMENT" }),
@@ -84,13 +130,18 @@ export const AssignOrdersModal = ({
         <h5 className="modal-title">Assign Orders to Shipment</h5>
       </ModalHeader>
       <ModalBody>
-        <InputGroup className="mb-3">
+        <InputGroup className="mb-1">
           <Form.Control
             placeholder="Search orders by number..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </InputGroup>
+        <Form.Text className="d-block mb-3 text-muted">
+          {search.trim().length > 0 && search.trim().length < 3
+            ? "Type at least 3 characters to search."
+            : "\u00A0"}
+        </Form.Text>
 
         {isLoading ? (
           <Spinner />
@@ -99,7 +150,10 @@ export const AssignOrdersModal = ({
             No unassigned orders to assign.
           </p>
         ) : (
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+          <div
+            ref={scrollContainerRef}
+            style={{ maxHeight: 380, overflowY: "auto" }}
+          >
             {candidates.map((o) => (
               <Form.Check
                 key={o.id}
@@ -121,6 +175,13 @@ export const AssignOrdersModal = ({
                 }
               />
             ))}
+            <div ref={sentinelRef} style={{ height: 1 }} />
+            {isFetchingNextPage && (
+              <div className="text-center py-2">
+                <Spinner size="sm" />
+                <span className="text-muted small ms-2">Loading more…</span>
+              </div>
+            )}
           </div>
         )}
       </ModalBody>
