@@ -36,7 +36,7 @@ const ShipmentFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
     useInfiniteQuery({
       queryKey: ["sites-for-shipment-filter"],
       initialPageParam: 1,
-      queryFn: ({ pageParam }) => getSites({ page: pageParam }),
+      queryFn: ({ pageParam }) => getSites({ page: pageParam, page_size: 20 }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),

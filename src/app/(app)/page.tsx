@@ -4,12 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
-import { getClients } from "@/services/client.service";
-import { getOrders } from "@/services/order.service";
-import { getDrums } from "@/services/drum.service";
-import { getShipments } from "@/services/shipment.service";
+import { getDashboard } from "@/services/dashboard.service";
 import { getTruckDeliveries } from "@/services/truck-delivery.service";
-import { SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
+import { SHIPMENT_STATUS_LABELS, ShipmentStatus } from "@/types/shipment.type";
 import { SiteName } from "@/components/ui/SiteName/SiteName";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -53,6 +50,14 @@ const STAT_CARDS = [
     bg: "#fdeef7",
   },
 ] as const;
+
+const SHIPMENT_STATUS_COLORS: Record<ShipmentStatus, string> = {
+  CREATED: "#c7cbd4",
+  IN_TRANSIT: "#3355c9",
+  ARRIVED: "#b46a12",
+  DELIVERED: "#203975",
+  CANCELLED: "#c0392b",
+};
 
 /** Small hand-rolled SVG donut — no charting library needed. */
 function StatusDonut({
@@ -149,59 +154,36 @@ function StatusDonut({
 }
 
 export default function DashboardPage() {
-  // Clients, Orders, Drums, Shipments, and Truck Deliveries all come from
-  // the real backend now — fetched client-side (via authApi, which
-  // attaches the real access token). There's no local mock
-  // /api/dashboard route anymore; every entity is real.
-  const { data: clientsData } = useQuery({
-    queryKey: ["dashboard-clients"],
-    queryFn: () => getClients({}),
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => getDashboard(),
   });
-  const { data: ordersData } = useQuery({
-    queryKey: ["dashboard-orders"],
-    queryFn: () => getOrders({ ordering: "-created_at" }),
-  });
-  const { data: availableDrumsData } = useQuery({
-    queryKey: ["dashboard-drums-available"],
-    queryFn: () => getDrums({ search: "" }),
-  });
-  const { data: shipmentsData } = useQuery({
-    queryKey: ["dashboard-shipments"],
-    queryFn: () => getShipments({ ordering: "-created_at" }),
-  });
+
   const { data: truckDeliveriesData } = useQuery({
-    queryKey: ["dashboard-truck-deliveries"],
+    queryKey: ["dashboard-truck-deliveries-count"],
     queryFn: () => getTruckDeliveries({}),
   });
 
-  const recentOrders = (ordersData?.results ?? []).slice(0, 5);
-  const recentShipments = (shipmentsData?.results ?? []).slice(0, 5);
-  // NOTE: /api/drums/ and /api/shipments/ have no "give me all pages at
-  // once" mode, so these counts only reflect whatever page was fetched,
-  // not the full dataset — an approximation, not an exact global count.
-  const availableDrumsCount = (availableDrumsData?.results ?? []).filter(
-    (d) => d.status === "AVAILABLE",
-  ).length;
-  const shipmentStatusCounts = {
-    created: (shipmentsData?.results ?? []).filter(
-      (s) => s.status === "CREATED",
-    ).length,
-    inTransit: (shipmentsData?.results ?? []).filter(
-      (s) => s.status === "IN_TRANSIT",
-    ).length,
-    delivered: (shipmentsData?.results ?? []).filter(
-      (s) => s.status === "DELIVERED",
-    ).length,
-  };
+  const recentOrders = dashboard?.recent_orders ?? [];
+  const recentShipments = dashboard?.recent_shipments ?? [];
+  const shipmentStatusCounts = dashboard?.shipment_statuses ?? {};
 
   const statValues: Record<string, string | number> = {
-    orders: ordersData ? ordersData.count : "—",
-    shipments: shipmentsData ? shipmentsData.count : "—",
-    drums: availableDrumsData
-      ? `${availableDrumsCount}/${availableDrumsData.count}`
-      : "—",
-    clients: clientsData ? clientsData.count : "—",
+    orders: dashboard ? dashboard.totals.orders : "—",
+    shipments: dashboard ? dashboard.totals.shipments : "—",
+    drums: dashboard ? dashboard.totals.available_drums : "—",
+    clients: dashboard ? dashboard.totals.clients : "—",
   };
+
+  const donutSegments = (
+    Object.keys(SHIPMENT_STATUS_LABELS) as ShipmentStatus[]
+  )
+    .filter((status) => (shipmentStatusCounts[status] ?? 0) > 0)
+    .map((status) => ({
+      label: SHIPMENT_STATUS_LABELS[status],
+      value: shipmentStatusCounts[status] ?? 0,
+      color: SHIPMENT_STATUS_COLORS[status],
+    }));
 
   return (
     <>
@@ -213,14 +195,9 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/quick-order" className="btn btn-primary">
-            <IconifyIcon
-              icon="ri:add-line"
-              className="me-1"
-              width={20}
-              height={20}
-            />{" "}
-            Quick Orders
+          <Link href="/quick-order" className="btn btn-success">
+            <IconifyIcon icon="ri:flashlight-line" className="me-1" /> Quick
+            Order
           </Link>
         </div>
       </div>
@@ -268,33 +245,17 @@ export default function DashboardPage() {
           <div className="card h-100 border-0 shadow-sm">
             <div className="card-body">
               <h6 className="fw-bold mb-3">Shipment Status Mix</h6>
-              {!shipmentsData ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   <span
                     className="placeholder col-12"
                     style={{ height: 100 }}
                   />
                 </div>
+              ) : donutSegments.length === 0 ? (
+                <p className="text-muted small mb-0">No shipments yet.</p>
               ) : (
-                <StatusDonut
-                  segments={[
-                    {
-                      label: "Created",
-                      value: shipmentStatusCounts.created,
-                      color: "#c7cbd4",
-                    },
-                    {
-                      label: "In Transit",
-                      value: shipmentStatusCounts.inTransit,
-                      color: "#3355c9",
-                    },
-                    {
-                      label: "Delivered",
-                      value: shipmentStatusCounts.delivered,
-                      color: "#203975",
-                    },
-                  ]}
-                />
+                <StatusDonut segments={donutSegments} />
               )}
               <hr className="my-3" />
               <Link
@@ -326,7 +287,7 @@ export default function DashboardPage() {
                   View all
                 </Link>
               </div>
-              {!ordersData ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   {[1, 2, 3].map((i) => (
                     <span
@@ -376,7 +337,7 @@ export default function DashboardPage() {
                   View all
                 </Link>
               </div>
-              {!shipmentsData ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   {[1, 2, 3].map((i) => (
                     <span

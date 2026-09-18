@@ -1,6 +1,5 @@
-// src/app/(app)/shipments/[id]/components/AssignDrumsModal.tsx
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Button,
   Form,
@@ -10,7 +9,11 @@ import {
   ModalFooter,
   ModalHeader,
 } from "react-bootstrap";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { setShipmentDrums } from "@/services/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
@@ -34,13 +37,38 @@ export const AssignDrumsModal = ({
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
 
-  // /api/drums/ (confirmed) supports a real `status` filter now — used
-  // here server-side instead of fetching everything and filtering client-side.
-  const { data, isLoading } = useQuery({
-    queryKey: ["drums-for-assign", search],
-    queryFn: () => getDrums({ search, status: "AVAILABLE" }),
-    enabled: show,
-  });
+  const effectiveSearch = search.trim().length >= 3 ? search.trim() : "";
+
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: ["drums-for-assign", effectiveSearch],
+      initialPageParam: 1,
+      queryFn: ({ pageParam }) =>
+        getDrums({
+          search: effectiveSearch || undefined,
+          status: "AVAILABLE",
+          page: pageParam,
+          page_size: 20,
+        }),
+      getNextPageParam: (lastPage, allPages) => {
+        const loaded = allPages.reduce(
+          (n, p) => n + (p?.results?.length ?? 0),
+          0,
+        );
+        const total = lastPage?.count ?? 0;
+        return loaded < total ? allPages.length + 1 : undefined;
+      },
+      enabled: show,
+    });
+  const drums = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
+    const seen = new Set<string>();
+    return all.filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    });
+  }, [data]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -73,9 +101,16 @@ export const AssignDrumsModal = ({
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
 
-  const candidates = (data?.results ?? []).filter(
-    (d) => !currentDrumIds.includes(d.id),
-  );
+  const candidates = drums.filter((d) => !currentDrumIds.includes(d.id));
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const nearBottom =
+      target.scrollHeight - target.scrollTop - target.clientHeight < 60;
+    if (nearBottom && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
 
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
@@ -83,13 +118,18 @@ export const AssignDrumsModal = ({
         <h5 className="modal-title">Assign Drums to Shipment</h5>
       </ModalHeader>
       <ModalBody>
-        <InputGroup className="mb-3">
+        <InputGroup className="mb-1">
           <Form.Control
             placeholder="Search drums by number..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </InputGroup>
+        <Form.Text className="d-block mb-3 text-muted">
+          {search.trim().length > 0 && search.trim().length < 3
+            ? "Type at least 3 characters to search."
+            : "\u00A0"}
+        </Form.Text>
 
         {isLoading ? (
           <Spinner />
@@ -98,7 +138,10 @@ export const AssignDrumsModal = ({
             No available drums to assign.
           </p>
         ) : (
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+          <div
+            style={{ maxHeight: 380, overflowY: "auto" }}
+            onScroll={handleScroll}
+          >
             {candidates.map((d) => (
               <Form.Check
                 key={d.id}
@@ -118,6 +161,12 @@ export const AssignDrumsModal = ({
                 }
               />
             ))}
+            {isFetchingNextPage && (
+              <div className="text-center py-2">
+                <Spinner size="sm" />
+                <span className="text-muted small ms-2">Loading more…</span>
+              </div>
+            )}
           </div>
         )}
       </ModalBody>

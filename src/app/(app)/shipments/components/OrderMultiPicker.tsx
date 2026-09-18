@@ -56,7 +56,7 @@ export const OrderMultiPicker = ({
       queryKey: ["orders-picker"],
       initialPageParam: 1,
       queryFn: ({ pageParam }) =>
-        getOrders({ page: pageParam, status: "CREATED" }),
+        getOrders({ page: pageParam, page_size: 20, status: "CREATED" }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),

@@ -39,7 +39,8 @@ const TruckDeliveryFilter = ({
     useInfiniteQuery({
       queryKey: ["shipments-for-truck-delivery-filter"],
       initialPageParam: 1,
-      queryFn: ({ pageParam }) => getShipments({ page: pageParam }),
+      queryFn: ({ pageParam }) =>
+        getShipments({ page: pageParam, page_size: 20 }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
