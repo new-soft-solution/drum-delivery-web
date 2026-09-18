@@ -35,10 +35,6 @@ const selectStyles = {
 
 const OrderFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
   const clientId = (tempFilters.client as string) || "";
-
-  // Same react-select + infinite-scroll pattern as ClientPicker
-  // (OrderForm), minus the "New Client" button — this is a filter panel,
-  // not a create flow.
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
       queryKey: ["clients-for-order-filter"],

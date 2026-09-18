@@ -1,9 +1,10 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ClientDetails } from "./ClientDetails";
 import { ClientForm } from "./ClientForm";
 import ClientFilter from "./ClientFilter";
+import ClientOrdersModal from "./ClientOrdersModal";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteClient, getClients } from "@/services/client.service";
@@ -15,7 +16,14 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
+import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import { Button } from "react-bootstrap";
 
 const EXPORT_COLUMNS: ExportColumn<Client>[] = [
   {
@@ -63,6 +71,7 @@ const EXPORT_COLUMNS: ExportColumn<Client>[] = [
 
 export const ClientTable = () => {
   const queryClient = useQueryClient();
+  const [viewOrdersClient, setViewOrdersClient] = useState<Client | null>(null);
   const {
     state,
     setState,
@@ -71,6 +80,9 @@ export const ClientTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
+    handleDelete,
+    handleEdit,
+    handleViewDetails,
   } = useCRUDTable<Client>("clients", deleteClient, {
     isEdit: true,
     isView: true,
@@ -176,7 +188,47 @@ export const ClientTable = () => {
           />
         ),
       },
-      ...getDefaultColumns.slice(-1),
+      {
+        header: "Actions",
+        cell: ({ row }: { row: { original: Client } }) => {
+          return (
+            <div className="d-flex align-items-center gap-2">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => handleViewDetails(row.original)}
+              >
+                <IconifyIcon icon="mdi:eye-outline" />
+              </Button>
+
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => handleEdit(row.original)}
+              >
+                <IconifyIcon icon="mdi:pencil-outline" />
+              </Button>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setViewOrdersClient(row.original)}
+                title="View this client's orders"
+              >
+                <IconifyIcon icon="ri:clipboard-line" />
+              </Button>
+              <Button
+                variant="link"
+                size="sm"
+                className="text-danger"
+                onClick={() => handleDelete(row.original)}
+              >
+                <IconifyIcon icon="mdi:trash-can-outline" />
+              </Button>
+            </div>
+          );
+        },
+      },
+      // ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
@@ -247,6 +299,11 @@ export const ClientTable = () => {
         viewComponent={({ item }) => <ClientDetails client={item} />}
         formComponent={ClientForm}
         entityName="Client"
+      />
+      <ClientOrdersModal
+        show={!!viewOrdersClient}
+        onHide={() => setViewOrdersClient(null)}
+        client={viewOrdersClient}
       />
     </>
   );

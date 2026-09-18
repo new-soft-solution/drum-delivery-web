@@ -39,12 +39,6 @@ const mapShipmentToOption = (s: Shipment): Option => ({
   label: s.shipment_number,
 });
 
-/**
- * Same react-select + infinite-scroll pattern as SitePicker/ClientPicker —
- * no "New Shipment" button here, though: creating a Shipment is its own
- * multi-tab flow (destination site, drums, orders...), not a one/two-field
- * quick-create like a Site or Drum.
- */
 export const ShipmentPicker = ({
   value,
   onChange,
@@ -55,7 +49,8 @@ export const ShipmentPicker = ({
     useInfiniteQuery({
       queryKey: ["shipments-picker"],
       initialPageParam: 1,
-      queryFn: ({ pageParam }) => getShipments({ page: pageParam }),
+      queryFn: ({ pageParam }) =>
+        getShipments({ page: pageParam, page_size: 20 }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
