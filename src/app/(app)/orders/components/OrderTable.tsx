@@ -21,6 +21,7 @@ import {
   exportToPdf,
 } from "@/utils/report-export";
 import { formatDateNL } from "@/utils/dateFormatter";
+import { useModulePermissions } from "@/utils/permissions";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -78,6 +79,8 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
 
 export const OrderTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("orders");
   const {
     state,
     setState,
@@ -87,10 +90,10 @@ export const OrderTable = () => {
     closeModal,
     getDefaultColumns,
   } = useCRUDTable<Order>("orders", deleteOrder, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -245,7 +248,7 @@ export const OrderTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Order",

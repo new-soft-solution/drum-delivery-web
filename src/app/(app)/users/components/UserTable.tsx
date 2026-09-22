@@ -1,19 +1,20 @@
 "use client";
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { SiteDetails } from "./SiteDetails";
-import { SiteForm } from "./SiteForm";
-import SiteFilter from "./SiteFilter";
+import { UserDetails } from "./UserDetails";
+import { UserForm } from "./UserForm";
+import UserFilter from "./UserFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import { deleteSite, getSites } from "@/services/site.service";
-import { Site, SiteFilterType } from "@/types/site.type";
+import { deleteUser, getUsers } from "@/services/user.service";
+import { User, UserFilterType } from "@/types/user.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CRUDTableState } from "@/types/crud.type";
 import { CellContext } from "@tanstack/react-table";
-import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
+import Avatar from "@/components/ui/Avatar/Avatar";
+import { formatDateNL } from "@/utils/dateFormatter";
 import {
   ExportColumn,
   ExportMeta,
@@ -22,52 +23,40 @@ import {
 } from "@/utils/report-export";
 import { useModulePermissions } from "@/utils/permissions";
 
-const EXPORT_COLUMNS: ExportColumn<Site>[] = [
-  { header: "Site Name", value: (s) => s.name, xlsxWidth: 24, pdfWidth: 90 },
+const EXPORT_COLUMNS: ExportColumn<User>[] = [
   {
-    header: "Address",
-    value: (s) => s.address || "",
-    xlsxWidth: 28,
-    pdfWidth: 100,
+    header: "Full Name",
+    value: (u) => [u.first_name, u.last_name].filter(Boolean).join(" "),
+    xlsxWidth: 24,
+    pdfWidth: 90,
   },
-  { header: "City", value: (s) => s.city || "", xlsxWidth: 16, pdfWidth: 60 },
-  { header: "State", value: (s) => s.state || "", xlsxWidth: 16, pdfWidth: 60 },
-  {
-    header: "Country",
-    value: (s) => s.country || "",
-    xlsxWidth: 16,
-    pdfWidth: 60,
-  },
-  {
-    header: "Postal Code",
-    value: (s) => s.postal_code || "",
-    xlsxWidth: 14,
-    pdfWidth: 55,
-  },
-  {
-    header: "Contact Person",
-    value: (s) => s.contact_person || "",
-    xlsxWidth: 22,
-    pdfWidth: 80,
-  },
-  {
-    header: "Contact Phone",
-    value: (s) => s.contact_phone || "",
-    xlsxWidth: 16,
-    pdfWidth: 70,
-  },
+  { header: "Email", value: (u) => u.email, xlsxWidth: 28, pdfWidth: 100 },
+  { header: "Username", value: (u) => u.username, xlsxWidth: 20, pdfWidth: 75 },
+  { header: "Role", value: (u) => u.role || "", xlsxWidth: 16, pdfWidth: 60 },
   {
     header: "Status",
-    value: (s) => (s.is_active ? "Active" : "Inactive"),
+    value: (u) => (u.is_active ? "Active" : "Inactive"),
     xlsxWidth: 12,
     pdfWidth: 50,
   },
+  {
+    header: "Staff",
+    value: (u) => (u.is_staff ? "Yes" : "No"),
+    xlsxWidth: 10,
+    pdfWidth: 40,
+  },
+  {
+    header: "Joined",
+    value: (u) => formatDateNL(u.date_joined),
+    xlsxWidth: 16,
+    pdfWidth: 60,
+  },
 ];
 
-export const SiteTable = () => {
+export const UserTable = () => {
   const queryClient = useQueryClient();
   const { canAdd, canView, canChange, canDelete } =
-    useModulePermissions("sites");
+    useModulePermissions("users");
   const {
     state,
     setState,
@@ -76,29 +65,24 @@ export const SiteTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
-  } = useCRUDTable<Site>("sites", deleteSite, {
+  } = useCRUDTable<User>("users", deleteUser, {
     isEdit: canChange,
     isView: canView,
     isDelete: canDelete,
     showCheckBox: canDelete,
   });
 
-  const params = {
-    ...buildQueryParams(),
-    search: state.globalFilter || undefined,
-    ...state.filters,
-    ordering: state.sorting?.length
-      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
-      : undefined,
-  };
+  const params = { ...buildQueryParams(), ...state.filters };
+  // /api/users/ (confirmed) only supports page, page_size, and role as
+  // query params — no generic `search` or `ordering` like the other
+  // entities, so the table's search box is disabled below (searchDisable)
+  // rather than pretending to filter server-side with a param that
+  // doesn't exist.
   const { data, isFetching, isLoading, error } = useQuery({
-    queryKey: ["sites", params],
+    queryKey: ["users", params],
     queryFn: () =>
-      getSites({
-        search: params.search,
-        ordering: params.ordering,
-        city: state.filters.city as string | undefined,
-        country: state.filters.country as string | undefined,
+      getUsers({
+        role: state.filters.role as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -113,89 +97,85 @@ export const SiteTable = () => {
 
   const rows = data?.results || [];
 
+  const filtersLine = state.filters.role
+    ? `Role: ${state.filters.role}`
+    : undefined;
+
   const handleExcelExport = useCallback(async () => {
     const meta: ExportMeta = {
-      title: "Sites",
-      fileBaseName: "sites",
+      title: "Users",
+      fileBaseName: "users",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Sites" });
-  }, [rows, state.globalFilter]);
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Users" });
+  }, [rows, filtersLine]);
 
   const handlePdfExport = useCallback(async () => {
     const meta: ExportMeta = {
-      title: "Sites",
-      fileBaseName: "sites",
+      title: "Users",
+      fileBaseName: "users",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine,
     };
     await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
-  }, [rows, state.globalFilter]);
+  }, [rows, filtersLine]);
 
   const columns = useMemo(
     () => [
       ...getDefaultColumns.slice(0, -1),
       {
-        header: "Site Name",
-        accessorKey: "name",
-        cell: (cell: CellContext<Site, unknown>) => (
-          <span className="fw-bold d-flex align-items-center gap-2">
-            <span
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 8,
-                background: "#eaf0ff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <IconifyIcon
-                icon="ri:map-pin-line"
-                width={15}
-                height={15}
-                style={{ color: "#3355c9" }}
-              />
+        header: "User",
+        cell: (cell: CellContext<User, unknown>) => {
+          const u = cell.row.original;
+          const fullName =
+            [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username;
+          return (
+            <span className="d-flex align-items-center gap-2">
+              <Avatar name={fullName} size={30} />
+              <span>
+                <span className="fw-bold d-block">{fullName}</span>
+                <span className="text-muted small">{u.email}</span>
+              </span>
             </span>
-            {cell.getValue<string>()}
-          </span>
-        ),
+          );
+        },
       },
-      { header: "Address", accessorKey: "address" },
-      { header: "City", accessorKey: "city" },
-      { header: "Country", accessorKey: "country" },
-      { header: "Contact Person", accessorKey: "contact_person" },
+      { header: "Username", accessorKey: "username" },
+      {
+        header: "Role",
+        cell: (cell: CellContext<User, unknown>) =>
+          cell.row.original.role || <span className="text-muted">—</span>,
+      },
       {
         header: "Status",
-        cell: (cell: CellContext<Site, unknown>) => (
+        cell: (cell: CellContext<User, unknown>) => (
           <StatusBadge
             status={cell.row.original.is_active ? "Active" : "Inactive"}
           />
         ),
+      },
+      {
+        header: "Joined",
+        cell: (cell: CellContext<User, unknown>) =>
+          formatDateNL(cell.row.original.date_joined),
       },
       ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
-  const initialFilters: SiteFilterType = {};
+  const initialFilters: UserFilterType = {};
 
   return (
     <>
-      <CRUDTable<Site, SiteFilterType>
+      <CRUDTable<User, UserFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Site, SiteFilterType>}
+        state={state as CRUDTableState<User, UserFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -228,9 +208,10 @@ export const SiteTable = () => {
         onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
-          entityName: "Site",
-          tableHeader: "All Sites",
-          filterOptions: { initialFilters, filterComponent: SiteFilter },
+          entityName: "User",
+          tableHeader: "All Users",
+          searchDisable: true,
+          filterOptions: { initialFilters, filterComponent: UserFilter },
         }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
@@ -238,20 +219,20 @@ export const SiteTable = () => {
         onExcelExport={handleExcelExport}
       />
 
-      <DetailsModal<Site>
+      <DetailsModal<User>
         show={state.modalState.showViewEditModal}
         onHide={closeModal}
         item={state.modalState.selectedItem ?? undefined}
         mode={state.modalState.mode}
         isLoading={isLoading}
         error={error}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["sites"] })}
-        viewComponent={({ item }) => <SiteDetails site={item} />}
-        formComponent={SiteForm}
-        entityName="Site"
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["users"] })}
+        viewComponent={({ item }) => <UserDetails user={item} />}
+        formComponent={UserForm}
+        entityName="User"
       />
     </>
   );
 };
 
-export default SiteTable;
+export default UserTable;

@@ -1,22 +1,22 @@
 "use client";
 import { Card, CardBody, Col, Row } from "react-bootstrap";
-import { SiteTable } from "./components/SiteTable";
+import { UserTable } from "./components/UserTable";
 import PageHeader from "@/components/ui/PageHeader/PageHeader";
 import RequireModuleView from "@/components/ui/RequireModuleView/RequireModuleView";
 
-const SitesPage = () => {
+const UsersPage = () => {
   return (
-    <RequireModuleView module="sites">
+    <RequireModuleView module="users">
       <PageHeader
-        icon="ri:map-pin-line"
-        title="Sites"
-        subtitle="Delivery destinations for shipments"
+        icon="ri:user-settings-line"
+        title="Users"
+        subtitle="Manage system users and access"
       />
       <Row>
         <Col xs={12}>
           <Card className="border-0 shadow-sm">
             <CardBody className="pt-0">
-              <SiteTable />
+              <UserTable />
             </CardBody>
           </Card>
         </Col>
@@ -25,4 +25,4 @@ const SitesPage = () => {
   );
 };
 
-export default SitesPage;
+export default UsersPage;

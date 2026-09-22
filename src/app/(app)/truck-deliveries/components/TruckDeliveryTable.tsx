@@ -29,6 +29,7 @@ import {
   exportToPdf,
 } from "@/utils/report-export";
 import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS = (
   shipmentNumbers: Map<string, string>,
@@ -81,6 +82,8 @@ const EXPORT_COLUMNS = (
 
 export const TruckDeliveryTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("truckDeliveries");
   const {
     state,
     setState,
@@ -90,10 +93,10 @@ export const TruckDeliveryTable = () => {
     closeModal,
     getDefaultColumns,
   } = useCRUDTable<TruckDelivery>("truck-deliveries", deleteTruckDelivery, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -260,7 +263,7 @@ export const TruckDeliveryTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Truck Delivery",
