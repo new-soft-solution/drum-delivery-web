@@ -186,7 +186,9 @@ const handleApiError = (error: unknown, special?: string): NormalizedError => {
     message = Array.isArray(firstValue)
       ? String(firstValue[0])
       : String(firstValue ?? message);
-  } else if (err.response.statusText) message = err.response.statusText;
+  } else if (status === 403)
+    message = "You don't have permission to perform this action.";
+  else if (err.response.statusText) message = err.response.statusText;
 
   return {
     message: message.trim(),

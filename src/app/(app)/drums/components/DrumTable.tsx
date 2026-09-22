@@ -20,6 +20,7 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS: ExportColumn<Drum>[] = [
   {
@@ -67,6 +68,8 @@ const EXPORT_COLUMNS: ExportColumn<Drum>[] = [
 export const DrumTable = () => {
   const queryClient = useQueryClient();
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("drums");
   const {
     state,
     setState,
@@ -76,10 +79,10 @@ export const DrumTable = () => {
     closeModal,
     getDefaultColumns,
   } = useCRUDTable<Drum>("drums", deleteDrum, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -219,7 +222,7 @@ export const DrumTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Drum",

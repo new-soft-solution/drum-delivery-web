@@ -15,6 +15,7 @@ export type MenuItemType = {
   target?: HTMLAttributeAnchorTarget;
   isDisabled?: boolean;
   children?: MenuItemType[];
+  permission?: string;
 };
 
 export type SubMenus = {
