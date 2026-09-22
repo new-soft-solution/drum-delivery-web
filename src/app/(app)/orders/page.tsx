@@ -2,11 +2,16 @@
 import { Card, CardBody, Col, Row } from "react-bootstrap";
 import { OrderTable } from "./components/OrderTable";
 import PageHeader from "@/components/ui/PageHeader/PageHeader";
+import RequireModuleView from "@/components/ui/RequireModuleView/RequireModuleView";
 
 const OrdersPage = () => {
   return (
-    <>
-      <PageHeader icon="ri:clipboard-line" title="Orders" subtitle="Purchase orders placed by clients" />
+    <RequireModuleView module="orders">
+      <PageHeader
+        icon="ri:clipboard-line"
+        title="Orders"
+        subtitle="Purchase orders placed by clients"
+      />
       <Row>
         <Col xs={12}>
           <Card className="border-0 shadow-sm">
@@ -16,7 +21,7 @@ const OrdersPage = () => {
           </Card>
         </Col>
       </Row>
-    </>
+    </RequireModuleView>
   );
 };
 

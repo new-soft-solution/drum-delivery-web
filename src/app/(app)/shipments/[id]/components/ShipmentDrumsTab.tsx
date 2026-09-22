@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Dropdown, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getShipment, setShipmentDrums } from "@/services/shipment.service";
-import { getDrum, updateDrum } from "@/services/drum.service";
+import { getDrums, updateDrum } from "@/services/drum.service";
 import { DRUM_STATUS_LABELS } from "@/types/drum.type";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
@@ -28,12 +28,13 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
   });
 
   const drumIds = shipment?.drums ?? [];
-  const { data: drums, isLoading: drumsLoading } = useQuery({
+  const { data, isLoading: drumsLoading } = useQuery({
     queryKey: ["shipment-drums-detail", shipmentId, drumIds],
-    queryFn: () => Promise.all(drumIds.map((id) => getDrum(id))),
+    queryFn: () =>
+      getDrums({ ids: drumIds.toString(), page_size: drumIds.length }),
     enabled: drumIds.length > 0,
   });
-
+  const drums = data?.results;
   const isLoading = shipmentLoading || (drumIds.length > 0 && drumsLoading);
 
   const removeMutation = useMutation({

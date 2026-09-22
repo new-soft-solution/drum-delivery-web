@@ -57,6 +57,7 @@ export interface DrumListParams {
   search?: string;
   status?: string;
   drum_number?: string;
+  ids?: string;
 }
 
 export type DrumListResponse = PaginatedResponse<Drum>;

@@ -24,6 +24,7 @@ import {
 } from "@/utils/report-export";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { Button } from "react-bootstrap";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS: ExportColumn<Client>[] = [
   {
@@ -72,6 +73,8 @@ const EXPORT_COLUMNS: ExportColumn<Client>[] = [
 export const ClientTable = () => {
   const queryClient = useQueryClient();
   const [viewOrdersClient, setViewOrdersClient] = useState<Client | null>(null);
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("clients");
   const {
     state,
     setState,
@@ -84,10 +87,10 @@ export const ClientTable = () => {
     handleEdit,
     handleViewDetails,
   } = useCRUDTable<Client>("clients", deleteClient, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -193,37 +196,44 @@ export const ClientTable = () => {
         cell: ({ row }: { row: { original: Client } }) => {
           return (
             <div className="d-flex align-items-center gap-2">
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => handleViewDetails(row.original)}
-              >
-                <IconifyIcon icon="mdi:eye-outline" />
-              </Button>
-
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => handleEdit(row.original)}
-              >
-                <IconifyIcon icon="mdi:pencil-outline" />
-              </Button>
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => setViewOrdersClient(row.original)}
-                title="View this client's orders"
-              >
-                <IconifyIcon icon="ri:clipboard-line" />
-              </Button>
-              <Button
-                variant="link"
-                size="sm"
-                className="text-danger"
-                onClick={() => handleDelete(row.original)}
-              >
-                <IconifyIcon icon="mdi:trash-can-outline" />
-              </Button>
+              {canView && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleViewDetails(row.original)}
+                >
+                  <IconifyIcon icon="mdi:eye-outline" />
+                </Button>
+              )}
+              {canChange && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleEdit(row.original)}
+                >
+                  <IconifyIcon icon="mdi:pencil-outline" />
+                </Button>
+              )}
+              {canView && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setViewOrdersClient(row.original)}
+                  title="View this client's orders"
+                >
+                  <IconifyIcon icon="ri:clipboard-line" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  onClick={() => handleDelete(row.original)}
+                >
+                  <IconifyIcon icon="mdi:trash-can-outline" />
+                </Button>
+              )}
             </div>
           );
         },
@@ -273,7 +283,7 @@ export const ClientTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Client",

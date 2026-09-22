@@ -9,12 +9,16 @@
 // this uncertainty.
 export interface SessionUser {
   id?: number | string;
+  email?: string;
+  username?: string;
   first_name?: string;
   last_name?: string;
-  email?: string;
+  is_active?: boolean;
+  is_staff?: boolean;
+  date_joined?: string;
   role?: string;
   avatar?: string | null;
-  is_active?: boolean;
+  permissions?: string[];
   [key: string]: unknown;
 }
 

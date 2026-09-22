@@ -29,6 +29,7 @@ import {
 } from "@/utils/report-export";
 import { formatDateNL } from "@/utils/dateFormatter";
 import { Button } from "react-bootstrap";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS = (
   siteNames: Map<string, string>,
@@ -74,6 +75,8 @@ const EXPORT_COLUMNS = (
 
 export const ShipmentTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("shipments");
   const {
     state,
     setState,
@@ -85,10 +88,10 @@ export const ShipmentTable = () => {
     handleDelete,
     handleEdit,
   } = useCRUDTable<Shipment>("shipments", deleteShipment, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -244,26 +247,30 @@ export const ShipmentTable = () => {
         cell: ({ row }: { row: { original: Shipment } }) => {
           return (
             <div className="d-flex align-items-center gap-2">
-              <Link href={`/shipments/${row.original.id}`}>
-                <IconifyIcon icon="mdi:eye-outline" />
-              </Link>
-
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => handleEdit(row.original)}
-              >
-                <IconifyIcon icon="mdi:pencil-outline" />
-              </Button>
-
-              <Button
-                variant="link"
-                size="sm"
-                className="text-danger"
-                onClick={() => handleDelete(row.original)}
-              >
-                <IconifyIcon icon="mdi:trash-can-outline" />
-              </Button>
+              {canView && (
+                <Link href={`/shipments/${row.original.id}`}>
+                  <IconifyIcon icon="mdi:eye-outline" />
+                </Link>
+              )}
+              {canChange && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleEdit(row.original)}
+                >
+                  <IconifyIcon icon="mdi:pencil-outline" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  onClick={() => handleDelete(row.original)}
+                >
+                  <IconifyIcon icon="mdi:trash-can-outline" />
+                </Button>
+              )}
             </div>
           );
         },
@@ -313,7 +320,7 @@ export const ShipmentTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Shipment",
