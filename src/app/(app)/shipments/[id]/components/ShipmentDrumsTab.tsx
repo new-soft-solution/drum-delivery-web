@@ -20,8 +20,6 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
   const [showCreate, setShowCreate] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
 
-  // The real Shipment object carries `drums` (an array of Drum UUIDs)
-  // directly — there's no separate link endpoint anymore.
   const { data: shipment, isLoading: shipmentLoading } = useQuery({
     queryKey: ["shipment", shipmentId],
     queryFn: () => getShipment(shipmentId),
@@ -59,8 +57,6 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
     },
   });
 
-  // A drum created from this tab is linked to this shipment right away —
-  // that's the point of creating it from here rather than from the main
   // Drums page.
   const linkMutation = useMutation({
     mutationFn: (drumId: string) =>

@@ -1,8 +1,7 @@
 "use client";
-import { useMemo } from "react";
-import { Modal, ModalBody, ModalHeader } from "react-bootstrap";
+import { useMemo, useState } from "react";
+import { Button, Modal, ModalBody, ModalHeader } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { CellContext } from "@tanstack/react-table";
 import { getOrders } from "@/services/order.service";
 import type { Client } from "@/types/client.type";
@@ -13,6 +12,7 @@ import { formatDateNL } from "@/utils/dateFormatter";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { CRUDTableState } from "@/types/crud.type";
+import { OrderDetails } from "@/app/(app)/orders/components/OrderDetails";
 
 interface ClientOrdersModalProps {
   show: boolean;
@@ -27,18 +27,13 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Cancelled",
 };
 
-/**
- * Read-only listing — no filter panel and no row actions (view/edit/
- * delete), just the shared CRUDTable's pagination/sorting chrome around
- * this one client's orders. isEdit/isView/isDelete/showCheckBox are all
- * off, and no filterOptions/onAddItem/export handlers are passed, so
- * none of that UI renders.
- */
 export const ClientOrdersModal = ({
   show,
   onHide,
   client,
 }: ClientOrdersModalProps) => {
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
+
   const { state, setState, buildQueryParams } = useCRUDTable<Order>(
     "client-orders-modal",
     async () => {},
@@ -83,9 +78,13 @@ export const ClientOrdersModal = ({
       {
         header: "Order Number",
         cell: (cell: CellContext<Order, unknown>) => (
-          <Link href="/orders" className="fw-bold text-decoration-none">
+          <Button
+            variant="link"
+            className="fw-bold p-0 text-decoration-none"
+            onClick={() => setViewOrder(cell.row.original)}
+          >
             {cell.row.original.order_number}
-          </Link>
+          </Button>
         ),
       },
       {
@@ -125,64 +124,83 @@ export const ClientOrdersModal = ({
   );
 
   return (
-    <Modal
-      show={show}
-      onHide={onHide}
-      centered
-      size="xl"
-      contentClassName="border border-2 rounded-3"
-    >
-      <ModalHeader closeButton>
-        <div>
-          <h5 className="modal-title mb-0">Orders for {client?.name}</h5>
-          {data && (
-            <p className="text-muted small mb-0">{data.count} order(s) total</p>
-          )}
-        </div>
-      </ModalHeader>
-      <ModalBody>
-        <CRUDTable<Order, OrderFilterType>
-          data={rows}
-          count={data?.count || 0}
-          isLoading={isFetching}
-          error={error as unknown as NormalizedError}
-          columns={columns}
-          state={state as CRUDTableState<Order, OrderFilterType>}
-          onPaginationChange={(pagination) =>
-            setState((prev) => ({
-              ...prev,
-              pagination:
-                typeof pagination === "function"
-                  ? pagination(prev.pagination)
-                  : pagination,
-            }))
-          }
-          onSortingChange={(sorting) =>
-            setState((prev) => ({
-              ...prev,
-              sorting:
-                typeof sorting === "function" ? sorting(prev.sorting) : sorting,
-            }))
-          }
-          onGlobalFilterChange={(filter) =>
-            setState((prev) => ({ ...prev, globalFilter: filter }))
-          }
-          onRowSelectionChange={(selection) =>
-            setState((prev) => ({
-              ...prev,
-              rowSelection:
-                typeof selection === "function"
-                  ? selection(prev.rowSelection)
-                  : selection,
-            }))
-          }
-          onFilterChange={(filters) =>
-            setState((prev) => ({ ...prev, filters }))
-          }
-          options={{ entityName: "Order", tableHeader: "" }}
-        />
-      </ModalBody>
-    </Modal>
+    <>
+      <Modal
+        show={show}
+        onHide={onHide}
+        centered
+        size="xl"
+        contentClassName="border border-2 rounded-3"
+      >
+        <ModalHeader closeButton>
+          <div>
+            <h5 className="modal-title mb-0">Orders for {client?.name}</h5>
+            {data && (
+              <p className="text-muted small mb-0">
+                {data.count} order(s) total
+              </p>
+            )}
+          </div>
+        </ModalHeader>
+        <ModalBody>
+          <CRUDTable<Order, OrderFilterType>
+            data={rows}
+            count={data?.count || 0}
+            isLoading={isFetching}
+            error={error as unknown as NormalizedError}
+            columns={columns}
+            state={state as CRUDTableState<Order, OrderFilterType>}
+            onPaginationChange={(pagination) =>
+              setState((prev) => ({
+                ...prev,
+                pagination:
+                  typeof pagination === "function"
+                    ? pagination(prev.pagination)
+                    : pagination,
+              }))
+            }
+            onSortingChange={(sorting) =>
+              setState((prev) => ({
+                ...prev,
+                sorting:
+                  typeof sorting === "function"
+                    ? sorting(prev.sorting)
+                    : sorting,
+              }))
+            }
+            onGlobalFilterChange={(filter) =>
+              setState((prev) => ({ ...prev, globalFilter: filter }))
+            }
+            onRowSelectionChange={(selection) =>
+              setState((prev) => ({
+                ...prev,
+                rowSelection:
+                  typeof selection === "function"
+                    ? selection(prev.rowSelection)
+                    : selection,
+              }))
+            }
+            onFilterChange={(filters) =>
+              setState((prev) => ({ ...prev, filters }))
+            }
+            options={{ entityName: "Order", tableHeader: "" }}
+          />
+        </ModalBody>
+      </Modal>
+
+      <Modal
+        show={!!viewOrder}
+        onHide={() => setViewOrder(null)}
+        centered
+        contentClassName="border border-2 rounded-3"
+        size="lg"
+      >
+        <ModalHeader closeButton>
+          <h5 className="modal-title mb-0">Order {viewOrder?.order_number}</h5>
+        </ModalHeader>
+        <ModalBody>{viewOrder && <OrderDetails order={viewOrder} />}</ModalBody>
+      </Modal>
+    </>
   );
 };
 
