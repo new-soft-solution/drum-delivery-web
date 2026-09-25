@@ -36,6 +36,7 @@ export interface OrderListParams {
   status?: string;
   client?: string;
   order_number?: string;
+  ids?: string;
 }
 
 export type OrderListResponse = PaginatedResponse<Order>;

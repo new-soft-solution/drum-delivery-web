@@ -1,6 +1,6 @@
 "use client";
 import type { ReactNode } from "react";
-import { useModulePermissions, type ModuleKey } from "@/utils/permissions";
+import { type ModuleKey, useModulePermissions } from "@/utils/permissions";
 import { EmptyState } from "@/components/ui/EmptyState/EmptyState";
 
 interface RequireModuleViewProps {
@@ -18,7 +18,7 @@ export const RequireModuleView = ({
     return (
       <EmptyState
         icon="ri:shield-cross-line"
-        title="You don't have access to this page"
+        title="You are not authorized to access this page"
         description="Your account doesn't have permission to view this section. Contact an administrator if you think this is a mistake."
       />
     );

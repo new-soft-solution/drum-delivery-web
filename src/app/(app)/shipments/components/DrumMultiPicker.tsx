@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import {
   useInfiniteQuery,
-  useQueries,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getDrum, getDrums } from "@/services/drum.service";
+import { getDrums } from "@/services/drum.service";
 import type { Drum } from "@/types/drum.type";
 import { QuickCreateDrumModal } from "./QuickCreateDrumModal";
 
@@ -67,12 +67,8 @@ export const DrumMultiPicker = ({
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      // staleTime: 60 * 1000,
     });
 
-  // De-duplicated by id up front — infinite-query pages can overlap if the
-  // underlying list shifts between page fetches (e.g. a drum's status
-  // changes and it drops out of the AVAILABLE filter mid-scroll).
   const drums = useMemo(() => {
     const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
     const seen = new Set<string>();
@@ -82,27 +78,19 @@ export const DrumMultiPicker = ({
       return true;
     });
   }, [data]);
-
-  // Resolve every id ever seen in this form session directly, regardless
-  // of whether it's AVAILABLE or already loaded on a fetched page.
   const missingIds = useMemo(
     () => seenIds.filter((id) => !drums.some((d) => d.id === id)),
     [seenIds, drums],
   );
-  const selectedDrumQueries = useQueries({
-    queries: missingIds.map((id) => ({
-      queryKey: ["drum", id],
-      queryFn: () => getDrum(id),
-      staleTime: 5 * 60 * 1000,
-    })),
+  const { data: missingDrumsData } = useQuery({
+    queryKey: ["drums-resolve-missing", missingIds],
+    queryFn: () =>
+      getDrums({ ids: missingIds.join(","), page_size: missingIds.length }),
+    enabled: missingIds.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
-  const resolvedSelectedDrums = selectedDrumQueries
-    .map((q) => q.data)
-    .filter((d): d is Drum => !!d);
+  const resolvedSelectedDrums = missingDrumsData?.results ?? [];
 
-  // Dedupe against the base list — a drum that was fetched individually
-  // (because it wasn't loaded yet) can later also show up in `drums` once
-  // pagination reaches it; without this, it would render twice.
   const options: Option[] = useMemo(() => {
     const extra = resolvedSelectedDrums.filter(
       (d) => !drums.some((base) => base.id === d.id),
@@ -143,7 +131,6 @@ export const DrumMultiPicker = ({
               onClick={() => setShowCreateModal(true)}
             >
               <IconifyIcon icon="ri:add-line" width={16} height={16} />
-              {/*<span className="fw-semibold small">New Drum</span>*/}
             </Button>
           )}
         </div>

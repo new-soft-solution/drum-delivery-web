@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useSessionStore } from "@/store/useSessionStore";
 
 export type PermissionAction = "add" | "change" | "delete" | "view";
@@ -7,6 +8,9 @@ export const permCode = (
   model: string,
   action: PermissionAction,
 ): string => `${appLabel}.${action}_${model}`;
+
+export const customPermCode = (appLabel: string, codename: string): string =>
+  `${appLabel}.${codename}`;
 
 export const hasPermission = (
   permissions: string[] | undefined,
@@ -79,24 +83,39 @@ export type ModuleKey = keyof typeof MODULE_PERMISSIONS;
 export const getCurrentPermissions = (): string[] =>
   useSessionStore.getState().session?.user?.permissions ?? [];
 
+const EMPTY_PERMISSIONS: string[] = [];
+
 export const usePermissions = () => {
-  const permissions =
-    useSessionStore((s) => s.session?.user?.permissions) ?? [];
-  return {
-    permissions,
-    has: (permission: string) => hasPermission(permissions, permission),
-    hasAny: (perms: string[]) => hasAnyPermission(permissions, perms),
-    hasAll: (perms: string[]) => hasAllPermissions(permissions, perms),
-  };
+  const permissions = useSessionStore(
+    (s) => s.session?.user?.permissions ?? EMPTY_PERMISSIONS,
+  );
+  return useMemo(
+    () => ({
+      permissions,
+      has: (permission: string) => hasPermission(permissions, permission),
+      hasAny: (perms: string[]) => hasAnyPermission(permissions, perms),
+      hasAll: (perms: string[]) => hasAllPermissions(permissions, perms),
+    }),
+    [permissions],
+  );
 };
 
 export const useModulePermissions = (moduleKey: ModuleKey) => {
   const { has } = usePermissions();
   const codes = MODULE_PERMISSIONS[moduleKey];
-  return {
-    canAdd: has(codes.add),
-    canChange: has(codes.change),
-    canDelete: has(codes.delete),
-    canView: has(codes.view),
-  };
+  return useMemo(
+    () => ({
+      canAdd: has(codes.add),
+      canChange: has(codes.change),
+      canDelete: has(codes.delete),
+      canView: has(codes.view),
+      has,
+    }),
+    [has, codes],
+  );
+};
+
+export const usePermission = (permission: string): boolean => {
+  const { has } = usePermissions();
+  return has(permission);
 };

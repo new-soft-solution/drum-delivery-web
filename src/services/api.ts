@@ -187,7 +187,7 @@ const handleApiError = (error: unknown, special?: string): NormalizedError => {
       ? String(firstValue[0])
       : String(firstValue ?? message);
   } else if (status === 403)
-    message = "You don't have permission to perform this action.";
+    message = "You are not authorized to access this action.";
   else if (err.response.statusText) message = err.response.statusText;
 
   return {

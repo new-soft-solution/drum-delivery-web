@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import {
   useInfiniteQuery,
-  useQueries,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { getOrder, getOrders } from "@/services/order.service";
+import { getOrders } from "@/services/order.service";
 import type { Order } from "@/types/order.type";
 import { QuickCreateOrderModal } from "./QuickCreateOrderModal";
 
@@ -65,12 +65,8 @@ export const OrderMultiPicker = ({
         const total = lastPage?.count ?? 0;
         return loaded < total ? allPages.length + 1 : undefined;
       },
-      // staleTime: 60 * 1000,
     });
 
-  // De-duplicated by id up front — infinite-query pages can overlap if the
-  // underlying list shifts between page fetches (e.g. an order's status
-  // changes and it drops out of the CREATED filter mid-scroll).
   const orders = useMemo(() => {
     const all = (data?.pages ?? []).flatMap((p) => p?.results ?? []);
     const seen = new Set<string>();
@@ -82,25 +78,21 @@ export const OrderMultiPicker = ({
   }, [data]);
 
   // Resolve every id ever seen in this form session directly, regardless
-  // of whether it's CREATED or already loaded on a fetched page.
+  // of whether it's CREATED or already loaded on a fetched page. One
+  // batched call instead of one getOrder(id) request per missing id.
   const missingIds = useMemo(
     () => seenIds.filter((id) => !orders.some((o) => o.id === id)),
     [seenIds, orders],
   );
-  const selectedOrderQueries = useQueries({
-    queries: missingIds.map((id) => ({
-      queryKey: ["order", id],
-      queryFn: () => getOrder(id),
-      staleTime: 5 * 60 * 1000,
-    })),
+  const { data: missingOrdersData } = useQuery({
+    queryKey: ["orders-resolve-missing", missingIds],
+    queryFn: () =>
+      getOrders({ ids: missingIds.join(","), page_size: missingIds.length }),
+    enabled: missingIds.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
-  const resolvedSelectedOrders = selectedOrderQueries
-    .map((q) => q.data)
-    .filter((o): o is Order => !!o);
+  const resolvedSelectedOrders = missingOrdersData?.results ?? [];
 
-  // Dedupe against the base list — an order that was fetched individually
-  // (because it wasn't loaded yet) can later also show up in `orders`
-  // once pagination reaches it; without this, it would render twice.
   const options: Option[] = useMemo(() => {
     const extra = resolvedSelectedOrders.filter(
       (o) => !orders.some((base) => base.id === o.id),
@@ -140,7 +132,6 @@ export const OrderMultiPicker = ({
             onClick={() => setShowCreateModal(true)}
           >
             <IconifyIcon icon="ri:add-line" width={16} height={16} />
-            {/*<span className="fw-semibold small">New Order</span>*/}
           </Button>
         </div>
         {isFetchingNextPage && <Form.Text>Loading more…</Form.Text>}

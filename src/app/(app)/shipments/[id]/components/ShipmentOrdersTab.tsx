@@ -4,7 +4,7 @@ import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { getShipment, setShipmentOrders } from "@/services/shipment.service";
-import { getOrder, updateOrder } from "@/services/order.service";
+import { getOrders, updateOrder } from "@/services/order.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Spinner from "@/components/Spinner";
@@ -34,12 +34,13 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
   });
 
   const orderIds = shipment?.orders ?? [];
-  const { data: orders, isLoading: ordersLoading } = useQuery({
+  const { data, isLoading: ordersLoading } = useQuery({
     queryKey: ["shipment-orders-detail", shipmentId, orderIds],
-    queryFn: () => Promise.all(orderIds.map((id) => getOrder(id))),
+    queryFn: () =>
+      getOrders({ ids: orderIds.toString(), page_size: orderIds.length }),
     enabled: orderIds.length > 0,
   });
-
+  const orders = data?.results;
   const isLoading = shipmentLoading || (orderIds.length > 0 && ordersLoading);
 
   const removeMutation = useMutation({
