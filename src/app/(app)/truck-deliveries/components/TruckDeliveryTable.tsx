@@ -20,8 +20,6 @@ import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
 import { CRUDTableState } from "@/types/crud.type";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { getShipment } from "@/services/shipment.service";
-import { ShipmentNumber } from "@/components/ui/ShipmentNumber/ShipmentNumber";
 import {
   ExportColumn,
   ExportMeta,
@@ -31,9 +29,7 @@ import {
 import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
 import { useModulePermissions } from "@/utils/permissions";
 
-const EXPORT_COLUMNS = (
-  shipmentNumbers: Map<string, string>,
-): ExportColumn<TruckDelivery>[] => [
+const EXPORT_COLUMNS: ExportColumn<TruckDelivery>[] = [
   {
     header: "Truck Number",
     value: (t) => t.truck_number,
@@ -48,7 +44,7 @@ const EXPORT_COLUMNS = (
   },
   {
     header: "Shipment",
-    value: (t) => shipmentNumbers.get(t.shipment) || t.shipment || "",
+    value: (t) => t.shipment_number || "",
     xlsxWidth: 18,
     pdfWidth: 65,
   },
@@ -133,27 +129,7 @@ export const TruckDeliveryTable = () => {
 
   const rows = data?.results || [];
 
-  const resolveShipmentNumbers = useCallback(async (): Promise<
-    Map<string, string>
-  > => {
-    const ids = Array.from(
-      new Set(rows.map((t) => t.shipment).filter(Boolean)),
-    );
-    const entries = await Promise.all(
-      ids.map(async (id) => {
-        try {
-          const shipment = await getShipment(id);
-          return [id, shipment.shipment_number] as const;
-        } catch {
-          return [id, id] as const;
-        }
-      }),
-    );
-    return new Map(entries);
-  }, [rows]);
-
   const handleExcelExport = useCallback(async () => {
-    const shipmentNumbers = await resolveShipmentNumbers();
     const meta: ExportMeta = {
       title: "Truck Deliveries",
       fileBaseName: "truck-deliveries",
@@ -162,13 +138,12 @@ export const TruckDeliveryTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS(shipmentNumbers), meta, {
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, {
       sheetName: "Truck Deliveries",
     });
-  }, [rows, state.globalFilter, resolveShipmentNumbers]);
+  }, [rows, state.globalFilter]);
 
   const handlePdfExport = useCallback(async () => {
-    const shipmentNumbers = await resolveShipmentNumbers();
     const meta: ExportMeta = {
       title: "Truck Deliveries",
       fileBaseName: "truck-deliveries",
@@ -177,10 +152,10 @@ export const TruckDeliveryTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToPdf(rows, EXPORT_COLUMNS(shipmentNumbers), meta, {
+    await exportToPdf(rows, EXPORT_COLUMNS, meta, {
       useColumnWidths: true,
     });
-  }, [rows, state.globalFilter, resolveShipmentNumbers]);
+  }, [rows, state.globalFilter]);
 
   const columns = useMemo(
     () => [
@@ -188,10 +163,11 @@ export const TruckDeliveryTable = () => {
       { header: "Truck Number", accessorKey: "truck_number" },
       {
         header: "Shipment",
-        accessorKey: "shipment",
-        cell: (cell: CellContext<TruckDelivery, unknown>) => (
-          <ShipmentNumber shipmentId={cell.row.original.shipment} />
-        ),
+        accessorKey: "shipment_number",
+        cell: (cell: CellContext<TruckDelivery, unknown>) => {
+          const v = cell.getValue<string | null>();
+          return v ? v : "—";
+        },
       },
       { header: "Driver", accessorKey: "driver_name" },
       {
