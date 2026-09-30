@@ -35,6 +35,7 @@ export interface TruckDelivery {
   status: TruckDeliveryStatus;
   notes?: string | null;
   shipment: string; // real Shipment UUID
+  shipment_number: string; // read-only, auto-generated
 }
 
 export interface TruckDeliveryListParams {
