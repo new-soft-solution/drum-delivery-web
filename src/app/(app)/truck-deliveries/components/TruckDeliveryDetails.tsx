@@ -2,7 +2,6 @@
 
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { ShipmentNumber } from "@/components/ui/ShipmentNumber/ShipmentNumber";
 import {
   TRUCK_DELIVERY_STATUS_LABELS,
   TruckDelivery,
@@ -29,7 +28,7 @@ export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
             />
             <DetailRow
               label="Shipment"
-              value={<ShipmentNumber shipmentId={delivery.shipment} />}
+              value={delivery.shipment_number || "—"}
               icon="ri-ship-line"
             />
             <DetailRow
