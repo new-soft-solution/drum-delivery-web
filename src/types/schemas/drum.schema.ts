@@ -17,7 +17,11 @@ const decimalString = z
  * is how those forms get the same validation without losing `.pick()`.
  */
 export const drumFormBaseSchema = z.object({
-  drum_number: z.string().min(1, "Drum number is required").max(50),
+  drum_number: z
+    .string()
+    .min(1, "Drum number is required")
+    .max(50)
+    .regex(/^[^.]*$/, "Drum number cannot contain a decimal point"),
   length_kms: decimalString,
   net_weight_mt: decimalString,
   gross_weight_mt: decimalString,
