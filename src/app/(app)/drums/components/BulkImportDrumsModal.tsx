@@ -14,6 +14,7 @@ interface BulkImportDrumsModalProps {
   show: boolean;
   onHide: () => void;
   onImported?: () => void;
+  contentClassName?: string;
 }
 
 const MAX_FILE_SIZE_MB = 10;
@@ -29,6 +30,7 @@ export const BulkImportDrumsModal = ({
   show,
   onHide,
   onImported,
+  contentClassName,
 }: BulkImportDrumsModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
@@ -132,7 +134,7 @@ export const BulkImportDrumsModal = ({
       onHide={handleClose}
       size="lg"
       centered
-      contentClassName={styles.modalContent}
+      contentClassName={`${styles.modalContent} ${contentClassName || ""}`}
     >
       <Modal.Header className={styles.modalHeader}>
         <div className={styles.headerInner}>

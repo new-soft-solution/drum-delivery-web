@@ -1,9 +1,9 @@
-// src/app/(app)/drums/components/DrumDetails.tsx
 "use client";
 
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import { Drum, DRUM_STATUS_LABELS } from "@/types/drum.type";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
 import React from "react";
 
 export const DrumDetails: React.FC<{ drum: Drum }> = ({ drum }) => {
@@ -15,7 +15,7 @@ export const DrumDetails: React.FC<{ drum: Drum }> = ({ drum }) => {
           <div className="col-md-6">
             <DetailRow
               label="Drum Number"
-              value={drum.drum_number || "—"}
+              value={formatDrumNumber(drum.drum_number) || "—"}
               icon="ri-box-3-line"
             />
             <DetailRow
