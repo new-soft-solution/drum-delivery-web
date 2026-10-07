@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,12 +15,27 @@ import {
   ShipmentFormValues,
 } from "@/types/schemas/shipment.schema";
 import { createShipment, updateShipment } from "@/services/shipment.service";
+import { getDrums } from "@/services/drum.service";
 import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import { SitePicker } from "./SitePicker";
 import { DrumMultiPicker } from "./DrumMultiPicker";
 import { OrderMultiPicker } from "./OrderMultiPicker";
+import { BulkImportDrumsModal } from "@/app/(app)/drums/components/BulkImportDrumsModal";
+
+async function fetchAllAvailableDrumIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  let page = 1;
+  const MAX_PAGES = 25;
+  while (page <= MAX_PAGES) {
+    const res = await getDrums({ status: "AVAILABLE", page });
+    res.results.forEach((d) => ids.add(d.id));
+    if (!res.next) break;
+    page += 1;
+  }
+  return ids;
+}
 
 interface ShipmentFormProps {
   item?: Shipment;
@@ -35,6 +51,9 @@ export const ShipmentForm = ({
   const queryClient = useQueryClient();
   const isEdit = !!shipment;
   const { showNotification } = useNotificationContext();
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [preImportSnapshot, setPreImportSnapshot] =
+    useState<Set<string> | null>(null);
 
   const form = useForm<ShipmentFormValues>({
     resolver: zodResolver(shipmentFormSchema),
@@ -80,6 +99,44 @@ export const ShipmentForm = ({
   });
   const drumsValue = useWatch({ control: form.control, name: "drums" }) ?? [];
   const ordersValue = useWatch({ control: form.control, name: "orders" }) ?? [];
+
+  const openBulkImport = () => {
+    setShowBulkImport(true);
+    setPreImportSnapshot(null);
+    fetchAllAvailableDrumIds().then(setPreImportSnapshot);
+  };
+
+  const handleImported = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["drums-picker"] }),
+      queryClient.invalidateQueries({ queryKey: ["drums"] }),
+    ]);
+
+    if (!preImportSnapshot) {
+      showNotification({ message: "Drums imported.", variant: "success" });
+      return;
+    }
+
+    const after = await fetchAllAvailableDrumIds();
+    const newlyImported = Array.from(after).filter(
+      (id) => !preImportSnapshot.has(id),
+    );
+
+    if (newlyImported.length > 0) {
+      form.setValue(
+        "drums",
+        Array.from(new Set([...drumsValue, ...newlyImported])),
+        { shouldDirty: true },
+      );
+      showNotification({
+        message: `${newlyImported.length} imported drum(s) added and selected.`,
+        variant: "success",
+      });
+    } else {
+      showNotification({ message: "Drums imported.", variant: "success" });
+    }
+    setPreImportSnapshot(null);
+  };
 
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
@@ -128,12 +185,23 @@ export const ShipmentForm = ({
           />
         </Col>
         <Col md={6}>
-          <DrumMultiPicker
-            value={drumsValue}
-            onChange={(ids) =>
-              form.setValue("drums", ids, { shouldDirty: true })
-            }
-          />
+          <div className="position-relative w-100">
+            <DrumMultiPicker
+              value={drumsValue}
+              onChange={(ids) =>
+                form.setValue("drums", ids, { shouldDirty: true })
+              }
+            />
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="position-absolute end-0"
+              style={{ top: "-10px" }}
+              onClick={openBulkImport}
+            >
+              Bulk Import (.xlsx)
+            </Button>
+          </div>
         </Col>
         <Col md={6}>
           <OrderMultiPicker
@@ -189,6 +257,13 @@ export const ShipmentForm = ({
           )}
         </Button>
       </div>
+
+      <BulkImportDrumsModal
+        show={showBulkImport}
+        onHide={() => setShowBulkImport(false)}
+        onImported={handleImported}
+        contentClassName="border border-2"
+      />
     </Form>
   );
 };

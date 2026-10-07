@@ -22,6 +22,7 @@ import {
 import type { Drum } from "@/types/drum.type";
 import type { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
 import { useNotificationContext } from "@/context/useNotificationContext";
 
 interface QuickCreateDrumModalProps {
@@ -71,7 +72,7 @@ export const QuickCreateDrumModal = ({
     mutationFn: (payload) => createDrum(payload),
     onSuccess: (drum) => {
       showNotification({
-        message: `Drum "${drum.drum_number}" created`,
+        message: `Drum "${formatDrumNumber(drum.drum_number)}" created`,
         variant: "success",
       });
       form.reset({
