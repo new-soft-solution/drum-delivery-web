@@ -35,7 +35,7 @@ export const QuickOrderStepOrder = ({ state, onCreated }: StepOrderProps) => {
       po_number: "",
       description: "",
       quantity: undefined,
-      unit: "",
+      unit: "KM",
     },
   });
 

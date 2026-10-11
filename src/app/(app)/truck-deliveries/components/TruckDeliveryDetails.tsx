@@ -1,16 +1,104 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { Table } from "react-bootstrap";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import {
   TRUCK_DELIVERY_STATUS_LABELS,
   TruckDelivery,
 } from "@/types/truck-delivery.type";
+import { DRUM_STATUS_LABELS } from "@/types/drum.type";
 import React from "react";
 import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
+import { getShipment } from "@/services/shipment.service";
+import { getDrums } from "@/services/drum.service";
+import Spinner from "@/components/Spinner";
 
-const formatDateTime = (v?: string | null) =>
-  v ? new Date(v).toLocaleString() : "—";
+const TruckDeliveryTraceability: React.FC<{ shipmentId: string }> = ({
+  shipmentId,
+}) => {
+  const { data: shipment, isLoading: shipmentLoading } = useQuery({
+    queryKey: ["shipment", shipmentId],
+    queryFn: () => getShipment(shipmentId),
+    enabled: !!shipmentId,
+  });
+
+  const drumIds = shipment?.drums ?? [];
+  const { data: drumsData, isLoading: drumsLoading } = useQuery({
+    queryKey: ["truck-delivery-traceability-drums", shipmentId, drumIds],
+    queryFn: () =>
+      getDrums({ ids: drumIds.join(","), page_size: drumIds.length }),
+    enabled: drumIds.length > 0,
+  });
+  const drums = drumsData?.results ?? [];
+
+  if (shipmentLoading) {
+    return <Spinner />;
+  }
+
+  if (!shipment) {
+    return (
+      <p className="text-muted small mb-0">
+        Linked shipment could not be loaded.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <div className="d-flex flex-wrap gap-4 mb-3">
+        <DetailRow
+          label="Shipment Number"
+          value={shipment.shipment_number || "—"}
+          icon="ri-ship-line"
+        />
+        <DetailRow
+          label="Invoice No."
+          value={shipment.invoice_no || "—"}
+          icon="ri-file-list-3-line"
+        />
+        <DetailRow
+          label="B/L No."
+          value={shipment.bl_no || "—"}
+          icon="ri-file-text-line"
+        />
+      </div>
+
+      {drumsLoading ? (
+        <Spinner />
+      ) : drums.length === 0 ? (
+        <p className="text-muted small mb-0">
+          No drums are linked to this shipment yet.
+        </p>
+      ) : (
+        <Table responsive hover size="sm" className="mb-0">
+          <thead>
+            <tr>
+              <th>Drum Number</th>
+              <th>Container</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {drums.map((d) => (
+              <tr key={d.id}>
+                <td className="fw-bold">{formatDrumNumber(d.drum_number)}</td>
+                <td>{d.container_no || "—"}</td>
+                <td>
+                  <StatusBadge
+                    status={DRUM_STATUS_LABELS[d.status] ?? d.status}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </div>
+  );
+};
 
 export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
   delivery,
@@ -92,6 +180,16 @@ export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
         <div className="mt-3">
           <h5>Notes</h5>
           <p className="text-muted mb-0">{delivery.notes || "No notes"}</p>
+        </div>
+        <div className="mt-4">
+          <h5 className="mb-3">Shipment &amp; Drums (Traceability)</h5>
+          {delivery.shipment ? (
+            <TruckDeliveryTraceability shipmentId={delivery.shipment} />
+          ) : (
+            <p className="text-muted small mb-0">
+              This truck delivery isn&apos;t linked to a shipment.
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import { setShipmentDrums } from "@/services/shipment.service";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import Spinner from "@/components/Spinner";
 import { getDrums, updateDrum } from "@/services/drum.service";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
 
 interface AssignDrumsModalProps {
   show: boolean;
@@ -152,7 +153,7 @@ export const AssignDrumsModal = ({
                 onChange={() => toggle(d.id)}
                 label={
                   <span>
-                    <b>{d.drum_number}</b>{" "}
+                    <b>{formatDrumNumber(d.drum_number)}</b>{" "}
                     <span className="text-muted small">
                       · {d.container_no || "—"} · {d.length_kms} KMs · Net{" "}
                       {d.net_weight_mt} MT

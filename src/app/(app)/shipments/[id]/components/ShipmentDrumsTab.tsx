@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getShipment, setShipmentDrums } from "@/services/shipment.service";
 import { getDrums, updateDrum } from "@/services/drum.service";
 import { DRUM_STATUS_LABELS } from "@/types/drum.type";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import Spinner from "@/components/Spinner";
@@ -127,7 +128,7 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
           <tbody>
             {(drums ?? []).map((d) => (
               <tr key={d.id}>
-                <td className="fw-bold">{d.drum_number}</td>
+                <td className="fw-bold">{formatDrumNumber(d.drum_number)}</td>
                 <td>{d.container_no || "—"}</td>
                 <td>{d.length_kms}</td>
                 <td>{d.net_weight_mt}</td>
