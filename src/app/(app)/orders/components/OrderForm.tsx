@@ -41,7 +41,7 @@ export const OrderForm = ({
       po_number: order?.po_number || "",
       description: order?.description || "",
       quantity: order?.quantity ?? undefined,
-      unit: order?.unit || "",
+      unit: order?.unit || "KM",
       status: order?.status || "CREATED",
       is_active: order?.is_active ?? true,
     },

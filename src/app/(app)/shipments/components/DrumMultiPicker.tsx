@@ -10,6 +10,7 @@ import Select from "react-select";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { getDrums } from "@/services/drum.service";
 import type { Drum } from "@/types/drum.type";
+import { formatDrumNumber } from "@/utils/formatDrumNumber";
 import { QuickCreateDrumModal } from "./QuickCreateDrumModal";
 
 type Option = { value: string; label: string };
@@ -35,7 +36,7 @@ const selectStyles = () => ({
 
 const mapDrumToOption = (d: Drum): Option => ({
   value: d.id,
-  label: `${d.drum_number}`,
+  label: formatDrumNumber(d.drum_number),
 });
 
 export const DrumMultiPicker = ({

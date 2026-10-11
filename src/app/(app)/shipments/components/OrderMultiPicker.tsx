@@ -34,7 +34,7 @@ const selectStyles = () => ({
 
 const mapOrderToOption = (o: Order): Option => ({
   value: o.id,
-  label: `${o.order_number} · ${o.client_details?.name ?? "Unknown"}`,
+  label: `${o.order_number} ${o.po_number ? ` · ${o.po_number}` : ""} · ${o.client_details?.name ?? "Unknown"}`,
 });
 
 export const OrderMultiPicker = ({
