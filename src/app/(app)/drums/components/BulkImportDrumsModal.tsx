@@ -18,7 +18,7 @@ interface BulkImportDrumsModalProps {
 }
 
 const MAX_FILE_SIZE_MB = 10;
-const ACCEPTED_EXTENSIONS = [".xlsx"];
+const ACCEPTED_EXTENSIONS = [".xlsx", ".csv"];
 
 const formatBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
