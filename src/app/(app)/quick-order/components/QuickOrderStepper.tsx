@@ -3,7 +3,6 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 
 export const QUICK_ORDER_STEPS = [
   "Order",
-  "Drums",
   "Shipment",
   "Truck Delivery",
 ] as const;

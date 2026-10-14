@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import {
   useInfiniteQuery,
@@ -19,6 +19,8 @@ interface DrumMultiPickerProps {
   value: string[];
   onChange: (drumIds: string[]) => void;
   isAdd?: boolean;
+  /** Rendered at the right-hand end of the "Drums" label row (e.g. a Bulk Import button). */
+  labelAction?: ReactNode;
 }
 
 const selectMenuPortalTarget =
@@ -43,6 +45,7 @@ export const DrumMultiPicker = ({
   value,
   onChange,
   isAdd = true,
+  labelAction,
 }: DrumMultiPickerProps) => {
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -103,7 +106,10 @@ export const DrumMultiPicker = ({
   return (
     <>
       <Form.Group className="mb-3">
-        <Form.Label>Drums</Form.Label>
+        <div className="d-flex justify-content-between align-items-end mb-1">
+          <Form.Label className="mb-0">Drums</Form.Label>
+          {labelAction}
+        </div>
         <div className="d-flex align-items-start gap-2">
           <div className="flex-grow-1">
             <Select<Option, true>

@@ -15,14 +15,18 @@ import type { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import { SitePicker } from "@/app/(app)/shipments/components/SitePicker";
-import { DrumMultiPicker } from "@/app/(app)/shipments/components/DrumMultiPicker";
 import { OrderMultiPicker } from "@/app/(app)/shipments/components/OrderMultiPicker";
 import type { QuickOrderState } from "../page";
+import DrumPickerWithImport from "@/app/(app)/shipments/components/Drumpickerwithimport";
 
 interface StepShipmentProps {
   state: QuickOrderState;
   onBack: () => void;
-  onCreated: (shipmentId: string, shipmentNumber: string) => void;
+  onCreated: (
+    shipmentId: string,
+    shipmentNumber: string,
+    drumCount: number,
+  ) => void;
 }
 
 interface MutateVars {
@@ -38,9 +42,10 @@ export const QuickOrderStepShipment = ({
   const router = useRouter();
   const { showNotification } = useNotificationContext();
 
-  // Same layout/fields as the real ShipmentForm — the drum(s) created in
-  // Step 2 and the order created in Step 1 are pre-selected here (via
-  // defaultValues) but stay fully editable before creating the shipment.
+  // Same layout/fields as the real ShipmentForm — the order created in
+  // Step 1 is pre-selected (via defaultValues) but stays editable. Drums
+  // are added here too (pick / "+" / bulk import): a drum can only enter
+  // the system linked to a shipment, so this is where they're created.
   const form = useForm<ShipmentFormValues>({
     resolver: zodResolver(shipmentFormSchema),
     defaultValues: {
@@ -48,7 +53,7 @@ export const QuickOrderStepShipment = ({
       bl_no: "",
       destination_site: "",
       expected_arrival_date: "",
-      drums: state.drumIds,
+      drums: [],
       orders: state.orderId ? [state.orderId] : [],
     },
   });
@@ -71,7 +76,11 @@ export const QuickOrderStepShipment = ({
         router.push("/shipments");
         return;
       }
-      onCreated(shipment.id, shipment.shipment_number);
+      onCreated(
+        shipment.id,
+        shipment.shipment_number,
+        shipment.drums?.length ?? variables.values.drums?.length ?? 0,
+      );
     },
     onError: (error) => {
       showNotification({
@@ -92,7 +101,13 @@ export const QuickOrderStepShipment = ({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => onCreated(state.shipmentId!, state.shipmentNumber!)}
+          onClick={() =>
+            onCreated(
+              state.shipmentId!,
+              state.shipmentNumber!,
+              state.drumCount ?? 0,
+            )
+          }
         >
           Continue to Truck Delivery
         </Button>
@@ -114,7 +129,7 @@ export const QuickOrderStepShipment = ({
 
   return (
     <Form onSubmit={submitAndContinue}>
-      <h6 className="fw-bold mb-3">Step 3 — Create the Shipment</h6>
+      <h6 className="fw-bold mb-3">Step 2 — Create the Shipment</h6>
       <Row>
         <Col md={6}>
           <Form.Group className="mb-3">
@@ -160,7 +175,7 @@ export const QuickOrderStepShipment = ({
           />
         </Col>
         <Col md={6}>
-          <DrumMultiPicker
+          <DrumPickerWithImport
             value={drumsValue}
             onChange={(ids) =>
               form.setValue("drums", ids, { shouldDirty: true })
