@@ -29,7 +29,7 @@ async function fetchAllAvailableDrumIds(): Promise<Set<string>> {
   let page = 1;
   const MAX_PAGES = 25;
   while (page <= MAX_PAGES) {
-    const res = await getDrums({ status: "AVAILABLE", page });
+    const res = await getDrums({ status: "AVAILABLE", page, page_size: 20 });
     res.results.forEach((d) => ids.add(d.id));
     if (!res.next) break;
     page += 1;

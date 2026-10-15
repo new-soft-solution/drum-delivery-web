@@ -5,31 +5,30 @@ import { Button } from "react-bootstrap";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { QuickOrderStepper } from "./components/QuickOrderStepper";
 import { QuickOrderStepOrder } from "./components/QuickOrderStepOrder";
-import { QuickOrderStepDrums } from "./components/QuickOrderStepDrums";
 import { QuickOrderStepShipment } from "./components/QuickOrderStepShipment";
 import { QuickOrderStepTruckDelivery } from "./components/QuickOrderStepTruckDelivery";
 
 export interface QuickOrderState {
   orderId?: string;
   orderNumber?: string;
-  drumIds: string[];
   shipmentId?: string;
   shipmentNumber?: string;
+  drumCount?: number;
   truckDeliveryId?: string;
   truckDeliveryLabel?: string;
 }
 
 export default function QuickOrderPage() {
   const [stepIndex, setStepIndex] = useState(0);
-  const [state, setState] = useState<QuickOrderState>({ drumIds: [] });
+  const [state, setState] = useState<QuickOrderState>({});
   const [done, setDone] = useState(false);
 
   const furthestStep = state.truckDeliveryId
-    ? 4
+    ? 3
     : state.shipmentId
-      ? 3
+      ? 2
       : state.orderId
-        ? 2
+        ? 1
         : 0;
 
   const goTo = (index: number) => {
@@ -60,8 +59,8 @@ export default function QuickOrderPage() {
             </div>
             <h4 className="fw-bold mb-2">Quick Order complete</h4>
             <p className="text-muted mb-4">
-              Order {state.orderNumber}, {state.drumIds.length} drum(s),
-              shipment {state.shipmentNumber}, and a truck delivery have all
+              Order {state.orderNumber}, shipment {state.shipmentNumber} (
+              {state.drumCount ?? 0} drum(s)), and a truck delivery have all
               been created and linked together.
             </p>
             <div className="d-flex justify-content-center gap-2 flex-wrap">
@@ -84,7 +83,7 @@ export default function QuickOrderPage() {
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  setState({ drumIds: [] });
+                  setState({});
                   setStepIndex(0);
                   setDone(false);
                 }}
@@ -102,8 +101,8 @@ export default function QuickOrderPage() {
     <div className="container-fluid py-3" style={{ maxWidth: 8120 }}>
       <h4 className="fw-bold mb-1">Quick Order</h4>
       <p className="text-muted small mb-4">
-        Create an order, its drums, a shipment, and a truck delivery in one
-        guided flow.
+        Create an order, a shipment (with its drums), and a truck delivery in
+        one guided flow.
       </p>
 
       <QuickOrderStepper
@@ -124,29 +123,24 @@ export default function QuickOrderPage() {
             />
           )}
           {stepIndex === 1 && (
-            <QuickOrderStepDrums
+            <QuickOrderStepShipment
               state={state}
               onBack={() => setStepIndex(0)}
-              onNext={(drumIds) => {
-                setState((s) => ({ ...s, drumIds }));
+              onCreated={(shipmentId, shipmentNumber, drumCount) => {
+                setState((s) => ({
+                  ...s,
+                  shipmentId,
+                  shipmentNumber,
+                  drumCount,
+                }));
                 setStepIndex(2);
               }}
             />
           )}
           {stepIndex === 2 && (
-            <QuickOrderStepShipment
-              state={state}
-              onBack={() => setStepIndex(1)}
-              onCreated={(shipmentId, shipmentNumber) => {
-                setState((s) => ({ ...s, shipmentId, shipmentNumber }));
-                setStepIndex(3);
-              }}
-            />
-          )}
-          {stepIndex === 3 && (
             <QuickOrderStepTruckDelivery
               state={state}
-              onBack={() => setStepIndex(2)}
+              onBack={() => setStepIndex(1)}
               onCreated={(truckDeliveryId, truckDeliveryLabel) => {
                 setState((s) => ({
                   ...s,

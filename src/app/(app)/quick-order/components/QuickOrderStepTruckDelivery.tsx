@@ -70,7 +70,7 @@ export const QuickOrderStepTruckDelivery = ({
 
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
-      <h6 className="fw-bold mb-1">Step 4 — Schedule the Truck Delivery</h6>
+      <h6 className="fw-bold mb-1">Step 3 — Schedule the Truck Delivery</h6>
       <p className="text-muted small mb-3">
         For shipment <strong>{state.shipmentNumber}</strong>.
       </p>
