@@ -181,8 +181,8 @@ export const ShipmentTable = () => {
     () => [
       ...getDefaultColumns.slice(0, -1),
       {
-        header: "Shipment Number",
-        accessorKey: "shipment_number",
+        header: "Invoice Number",
+        accessorKey: "invoice_no",
         cell: (cell: CellContext<Shipment, unknown>) => (
           <Link
             href={`/shipments/${cell.row.original.id}`}

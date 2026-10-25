@@ -95,6 +95,11 @@ export default function ShipmentDetailPage() {
                 <div className="row">
                   <div className="col-md-6">
                     <DetailRow
+                      label="Invoice Number"
+                      value={shipment.invoice_no || "—"}
+                      icon="ri-file-list-3-line"
+                    />
+                    <DetailRow
                       label="Shipment Number"
                       value={shipment.shipment_number}
                       icon="ri-ship-line"
@@ -103,11 +108,6 @@ export default function ShipmentDetailPage() {
                       label="Destination"
                       value={<SiteName siteId={shipment.destination_site} />}
                       icon="ri-map-pin-line"
-                    />
-                    <DetailRow
-                      label="Invoice Number"
-                      value={shipment.invoice_no || "—"}
-                      icon="ri-file-list-3-line"
                     />
                     <DetailRow
                       label="BL Number"

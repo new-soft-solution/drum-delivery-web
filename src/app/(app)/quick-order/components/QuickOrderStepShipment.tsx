@@ -222,7 +222,7 @@ export const QuickOrderStepShipment = ({
                 <Spinner size="sm" className="me-1" />
               </div>
             ) : (
-              "Cancel & Save"
+              "Save & Close"
             )}
           </Button>
           <Button variant="primary" type="submit" disabled={mutation.isPending}>
