@@ -39,14 +39,14 @@ export const MENU_ITEMS: MenuItemType[] = [
     icon: "ri:clipboard-line",
     permission: MODULE_PERMISSIONS.orders.view,
   },
-  {
-    key: "drums",
-    label: "Drums",
-    label_nl: "Drums",
-    url: "/drums",
-    icon: "ri:box-3-line",
-    permission: MODULE_PERMISSIONS.drums.view,
-  },
+  // {
+  //   key: "drums",
+  //   label: "Drums",
+  //   label_nl: "Drums",
+  //   url: "/drums",
+  //   icon: "ri:box-3-line",
+  //   permission: MODULE_PERMISSIONS.drums.view,
+  // },
   {
     key: "shipments",
     label: "Shipments",

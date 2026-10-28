@@ -7,9 +7,8 @@ import ShipmentFilter from "./ShipmentFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteShipment, getShipments } from "@/services/shipment.service";
-import { getSite } from "@/services/site.service";
-import { SiteName } from "@/components/ui/SiteName/SiteName";
 import {
+  getShipmentSiteNames,
   Shipment,
   SHIPMENT_STATUS_LABELS,
   ShipmentFilterType,
@@ -31,9 +30,7 @@ import { formatDateNL } from "@/utils/dateFormatter";
 import { Button } from "react-bootstrap";
 import { useModulePermissions } from "@/utils/permissions";
 
-const EXPORT_COLUMNS = (
-  siteNames: Map<string, string>,
-): ExportColumn<Shipment>[] => [
+const EXPORT_COLUMNS: ExportColumn<Shipment>[] = [
   {
     header: "Shipment Number",
     value: (s) => s.shipment_number,
@@ -54,7 +51,7 @@ const EXPORT_COLUMNS = (
   },
   {
     header: "Destination",
-    value: (s) => siteNames.get(s.destination_site) || s.destination_site || "",
+    value: (s) => getShipmentSiteNames(s).join(", "),
     xlsxWidth: 24,
     pdfWidth: 90,
   },
@@ -109,7 +106,7 @@ export const ShipmentTable = () => {
         search: params.search,
         ordering: params.ordering,
         status: state.filters.status as string | undefined,
-        destination_site: state.filters.destination_site as string | undefined,
+        site: state.filters.site as string | undefined,
         expected_arrival_date_after: state.filters
           .expected_arrival_date_after as string | undefined,
         expected_arrival_date_before: state.filters
@@ -128,27 +125,7 @@ export const ShipmentTable = () => {
 
   const rows = data?.results || [];
 
-  const resolveSiteNames = useCallback(async (): Promise<
-    Map<string, string>
-  > => {
-    const ids = Array.from(
-      new Set(rows.map((s) => s.destination_site).filter(Boolean)),
-    );
-    const entries = await Promise.all(
-      ids.map(async (id) => {
-        try {
-          const site = await getSite(id);
-          return [id, site.name] as const;
-        } catch {
-          return [id, id] as const;
-        }
-      }),
-    );
-    return new Map(entries);
-  }, [rows]);
-
   const handleExcelExport = useCallback(async () => {
-    const siteNames = await resolveSiteNames();
     const meta: ExportMeta = {
       title: "Shipments",
       fileBaseName: "shipments",
@@ -157,13 +134,12 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS(siteNames), meta, {
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, {
       sheetName: "Shipments",
     });
-  }, [rows, state.globalFilter, resolveSiteNames]);
+  }, [rows, state.globalFilter]);
 
   const handlePdfExport = useCallback(async () => {
-    const siteNames = await resolveSiteNames();
     const meta: ExportMeta = {
       title: "Shipments",
       fileBaseName: "shipments",
@@ -172,17 +148,17 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToPdf(rows, EXPORT_COLUMNS(siteNames), meta, {
+    await exportToPdf(rows, EXPORT_COLUMNS, meta, {
       useColumnWidths: true,
     });
-  }, [rows, state.globalFilter, resolveSiteNames]);
+  }, [rows, state.globalFilter]);
 
   const columns = useMemo(
     () => [
       ...getDefaultColumns.slice(0, -1),
       {
-        header: "Shipment Number",
-        accessorKey: "shipment_number",
+        header: "Invoice Number",
+        accessorKey: "invoice_no",
         cell: (cell: CellContext<Shipment, unknown>) => (
           <Link
             href={`/shipments/${cell.row.original.id}`}
@@ -213,10 +189,10 @@ export const ShipmentTable = () => {
       },
       {
         header: "Destination",
-        accessorKey: "destination_site",
-        cell: (cell: CellContext<Shipment, unknown>) => (
-          <SiteName siteId={cell.row.original.destination_site} />
-        ),
+        id: "sites",
+        enableSorting: false,
+        cell: (cell: CellContext<Shipment, unknown>) =>
+          getShipmentSiteNames(cell.row.original).join(", ") || "—",
       },
       {
         header: "Expected Arrival",

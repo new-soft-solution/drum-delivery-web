@@ -13,7 +13,10 @@ export default function DetailRow({
     <div className="mb-3">
       <div className="d-flex align-items-center">
         <i className={`${icon} text-muted me-2`}></i>
-        <h6 className="mb-0 text-muted" style={{ minWidth: "100px" }}>
+        <h6
+          className="mb-0 text-muted text-nowrap"
+          style={{ minWidth: "100px" }}
+        >
           {label}:
         </h6>
         <span className="text-body fw-medium ms-2">{value}</span>

@@ -14,14 +14,14 @@ const Breadcrumbs = () => {
   if (breadcrumbs.length === 0 && pathname.startsWith("/")) {
     const pathSegments = pathname.split("/").filter(Boolean);
 
-    if (pathSegments.length > 2) {
+    if (pathSegments.length >= 2) {
       const parentPath = "/" + pathSegments.slice(0, -1).join("/");
       breadcrumbs = getBreadcrumbs(MENU_ITEMS, parentPath);
 
       if (breadcrumbs.length > 0) {
         const currentSegment = pathSegments[pathSegments.length - 1];
-        // Only add if it looks like an ID (optional - customize based on your needs)
-        if (/^\d+$/.test(currentSegment)) {
+        // Dynamic id segment (numeric or UUID)
+        if (/^\d+$/.test(currentSegment) || /^[0-9a-f-]{8,}$/i.test(currentSegment)) {
           breadcrumbs.push({
             label: `Details`,
             url: pathname,

@@ -25,6 +25,7 @@ export interface SiteListParams {
   city?: string;
   country?: string;
   name?: string;
+  shipment_id?: string;
 }
 
 export type SiteListResponse = PaginatedResponse<Site>;

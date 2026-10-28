@@ -23,4 +23,19 @@ export const SiteName = ({ siteId }: { siteId?: string | null }) => {
   return <>{data?.name ?? "Unknown site"}</>;
 };
 
+/** Comma-separated names of several sites (e.g. a Shipment's destinations). */
+export const SiteNames = ({ siteIds }: { siteIds: string[] }) => {
+  if (siteIds.length === 0) return <span className="text-muted">—</span>;
+  return (
+    <>
+      {siteIds.map((id, i) => (
+        <span key={id}>
+          {i > 0 && ", "}
+          <SiteName siteId={id} />
+        </span>
+      ))}
+    </>
+  );
+};
+
 export default SiteName;
