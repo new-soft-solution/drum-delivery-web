@@ -106,8 +106,8 @@ export const DrumMultiPicker = ({
   return (
     <>
       <Form.Group className="mb-3">
-        <div className="d-flex justify-content-between align-items-end mb-1">
-          <Form.Label className="mb-0">Drums</Form.Label>
+        <div className="position-relative w-100">
+          <Form.Label>Drums</Form.Label>
           {labelAction}
         </div>
         <div className="d-flex align-items-start gap-2">

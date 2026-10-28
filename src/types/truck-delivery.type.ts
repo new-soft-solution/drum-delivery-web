@@ -36,6 +36,8 @@ export interface TruckDelivery {
   notes?: string | null;
   shipment: string; // real Shipment UUID
   shipment_number: string; // read-only, auto-generated
+  site?: string | null; // Site UUID, must be one of the shipment's sites
+  drums?: string[]; // Drum UUIDs, must belong to the selected site
 }
 
 export interface TruckDeliveryListParams {

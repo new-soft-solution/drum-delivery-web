@@ -3,6 +3,7 @@ import { buildQueryParams } from "@/utils/build-query-params";
 import type { DeleteProps } from "@/types/global.type";
 import type {
   Shipment,
+  ShipmentSite,
   ShipmentListParams,
   ShipmentListResponse,
 } from "@/types/shipment.type";
@@ -84,15 +85,79 @@ export const deleteShipment = async ({
 };
 
 /**
- * The real Shipment object carries `drums`/`orders` directly as arrays of
- * UUIDs — confirmed via schema.yaml — so "assigning" a drum or order to a
- * shipment is just a PATCH of that array, not a separate link/unlink
- * endpoint like the old mock API had.
+ * A Shipment carries `sites: [{ site, drums }]` and `orders` (UUID array) —
+ * confirmed via schema.yaml — so "assigning" a drum or order is just a PATCH
+ * of that field, not a separate link/unlink endpoint.
  */
-export const setShipmentDrums = (
+export const setShipmentSites = async (
   id: string,
+  sites: ShipmentSite[],
+): Promise<Shipment> => {
+  try {
+    const response = await authApi.patch(`/api/shipments/${id}/`, { sites });
+    return response.data;
+  } catch (error) {
+    throw handleApiError(error);
+  }
+};
+
+/**
+ * Adds drums to the given site (defaults to the shipment's first site, used by
+ * flows without a site picker).
+ */
+export const addShipmentDrums = (
+  id: string,
+  sites: ShipmentSite[],
   drumIds: string[],
-): Promise<Shipment> => updateShipmentArrayField(id, "drums", drumIds);
+  siteId?: string,
+): Promise<Shipment> => {
+  if (sites.length === 0) {
+    return Promise.reject(new Error("Shipment has no destination site."));
+  }
+  const targetId = siteId ?? sites[0].site;
+  const exists = sites.some((s) => s.site === targetId);
+  const merged = exists
+    ? sites
+    : [...sites, { site: targetId, drums: [] as string[] }];
+  return setShipmentSites(
+    id,
+    merged.map((s) =>
+      s.site === targetId
+        ? {
+            site: s.site,
+            drums: Array.from(new Set([...(s.drums ?? []), ...drumIds])),
+          }
+        : s,
+    ),
+  );
+};
+
+/** Replaces the drums of a single site, leaving the other sites untouched. */
+export const setShipmentSiteDrums = (
+  id: string,
+  sites: ShipmentSite[],
+  siteId: string,
+  drumIds: string[],
+): Promise<Shipment> =>
+  setShipmentSites(
+    id,
+    sites.map((s) =>
+      s.site === siteId ? { site: s.site, drums: drumIds } : s,
+    ),
+  );
+
+export const removeShipmentDrum = (
+  id: string,
+  sites: ShipmentSite[],
+  drumId: string,
+): Promise<Shipment> =>
+  setShipmentSites(
+    id,
+    sites.map((s) => ({
+      site: s.site,
+      drums: (s.drums ?? []).filter((d) => d !== drumId),
+    })),
+  );
 
 export const setShipmentOrders = (
   id: string,
@@ -101,7 +166,7 @@ export const setShipmentOrders = (
 
 async function updateShipmentArrayField(
   id: string,
-  field: "drums" | "orders",
+  field: "orders",
   ids: string[],
 ): Promise<Shipment> {
   try {

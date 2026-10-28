@@ -4,14 +4,17 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Nav, TabContainer, TabContent, TabPane } from "react-bootstrap";
 import { getShipment } from "@/services/shipment.service";
-import { SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
+import {
+  getShipmentDrumIds,
+  getShipmentSiteNames,
+  SHIPMENT_STATUS_LABELS,
+} from "@/types/shipment.type";
 import Spinner from "@/components/Spinner";
 import ErrorMessage from "@/components/ui/ErrorMessage/ErrorMessage";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import { ShipmentDrumsTab } from "./components/ShipmentDrumsTab";
 import { ShipmentOrdersTab } from "./components/ShipmentOrdersTab";
-import { SiteName } from "@/components/ui/SiteName/SiteName";
 import { formatDateNL } from "@/utils/dateFormatter";
 
 export default function ShipmentDetailPage() {
@@ -72,14 +75,14 @@ export default function ShipmentDetailPage() {
         </div>
       </div>
 
-      <TabContainer defaultActiveKey="basic">
+      <TabContainer defaultActiveKey="basic" mountOnEnter>
         <Nav variant="tabs" className="mb-3">
           <Nav.Item>
             <Nav.Link eventKey="basic">Basic Information</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="drums">
-              Drums ({shipment.drums.length})
+              Drums ({getShipmentDrumIds(shipment).length})
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
@@ -105,8 +108,8 @@ export default function ShipmentDetailPage() {
                       icon="ri-ship-line"
                     />
                     <DetailRow
-                      label="Destination"
-                      value={<SiteName siteId={shipment.destination_site} />}
+                      label="Destination Sites"
+                      value={getShipmentSiteNames(shipment).join(", ") || "—"}
                       icon="ri-map-pin-line"
                     />
                     <DetailRow
@@ -144,7 +147,7 @@ export default function ShipmentDetailPage() {
                     />
                     <DetailRow
                       label="Linked Drums"
-                      value={shipment.drums.length}
+                      value={getShipmentDrumIds(shipment).length}
                       icon="ri-box-3-line"
                     />
                   </div>

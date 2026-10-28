@@ -38,6 +38,8 @@ const cleanPayload = (data: Partial<TruckDeliveryFormValues>) => ({
   actual_departure_date: data.actual_departure_date || undefined,
   actual_arrival_date: data.actual_arrival_date || undefined,
   notes: data.notes || undefined,
+  site: data.site || null,
+  drums: data.drums ?? [],
 });
 
 export const createTruckDelivery = async (

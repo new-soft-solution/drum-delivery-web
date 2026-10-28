@@ -10,14 +10,13 @@ import {
   shipmentFormSchema,
   ShipmentFormValues,
 } from "@/types/schemas/shipment.schema";
-import type { Shipment } from "@/types/shipment.type";
+import { getShipmentDrumIds, type Shipment } from "@/types/shipment.type";
 import type { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
-import { SitePicker } from "@/app/(app)/shipments/components/SitePicker";
+import { ShipmentSitesField } from "@/app/(app)/shipments/components/ShipmentSitesField";
 import { OrderMultiPicker } from "@/app/(app)/shipments/components/OrderMultiPicker";
 import type { QuickOrderState } from "../page";
-import DrumPickerWithImport from "@/app/(app)/shipments/components/Drumpickerwithimport";
 
 interface StepShipmentProps {
   state: QuickOrderState;
@@ -51,18 +50,12 @@ export const QuickOrderStepShipment = ({
     defaultValues: {
       invoice_no: "",
       bl_no: "",
-      destination_site: "",
+      sites: [{ site: "", drums: [] }],
       expected_arrival_date: "",
-      drums: [],
       orders: state.orderId ? [state.orderId] : [],
     },
   });
 
-  const destinationSiteValue = useWatch({
-    control: form.control,
-    name: "destination_site",
-  });
-  const drumsValue = useWatch({ control: form.control, name: "drums" }) ?? [];
   const ordersValue = useWatch({ control: form.control, name: "orders" }) ?? [];
 
   const mutation = useMutation<Shipment, NormalizedError, MutateVars>({
@@ -79,7 +72,8 @@ export const QuickOrderStepShipment = ({
       onCreated(
         shipment.id,
         shipment.shipment_number,
-        shipment.drums?.length ?? variables.values.drums?.length ?? 0,
+        getShipmentDrumIds(shipment).length ||
+          new Set(variables.values.sites.flatMap((s) => s.drums)).size,
       );
     },
     onError: (error) => {
@@ -162,27 +156,6 @@ export const QuickOrderStepShipment = ({
           </Form.Group>
         </Col>
         <Col md={6}>
-          <SitePicker
-            value={destinationSiteValue}
-            onChange={(siteId) =>
-              form.setValue("destination_site", siteId, {
-                shouldValidate: true,
-                shouldDirty: true,
-              })
-            }
-            isInvalid={!!form.formState.errors.destination_site}
-            errorMessage={form.formState.errors.destination_site?.message}
-          />
-        </Col>
-        <Col md={6}>
-          <DrumPickerWithImport
-            value={drumsValue}
-            onChange={(ids) =>
-              form.setValue("drums", ids, { shouldDirty: true })
-            }
-          />
-        </Col>
-        <Col md={6}>
           <OrderMultiPicker
             value={ordersValue}
             onChange={(ids) =>
@@ -200,6 +173,8 @@ export const QuickOrderStepShipment = ({
           </Form.Group>
         </Col>
       </Row>
+
+      <ShipmentSitesField form={form} />
 
       <div className="d-flex justify-content-between">
         <Button
