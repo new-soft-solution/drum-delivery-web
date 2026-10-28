@@ -6,8 +6,11 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import { getDashboard } from "@/services/dashboard.service";
 import { getTruckDeliveries } from "@/services/truck-delivery.service";
-import { SHIPMENT_STATUS_LABELS, ShipmentStatus } from "@/types/shipment.type";
-import { SiteName } from "@/components/ui/SiteName/SiteName";
+import {
+  getShipmentSiteNames,
+  SHIPMENT_STATUS_LABELS,
+  ShipmentStatus,
+} from "@/types/shipment.type";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -380,7 +383,7 @@ export default function DashboardPage() {
                         {s.shipment_number}
                       </div>
                       <div className="small text-muted text-truncate">
-                        <SiteName siteId={s.destination_site} />
+                        {getShipmentSiteNames(s).join(", ") || "—"}
                       </div>
                     </div>
                     <StatusBadge

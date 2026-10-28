@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Table } from "react-bootstrap";
+import { Accordion, Table } from "react-bootstrap";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import {
@@ -16,23 +16,39 @@ import { getShipment } from "@/services/shipment.service";
 import { getDrums } from "@/services/drum.service";
 import Spinner from "@/components/Spinner";
 
-const TruckDeliveryTraceability: React.FC<{ shipmentId: string }> = ({
-  shipmentId,
-}) => {
+const TruckDeliveryTraceability: React.FC<{
+  shipmentId: string;
+  siteId?: string | null;
+  deliveryDrumIds?: string[];
+}> = ({ shipmentId, siteId, deliveryDrumIds }) => {
   const { data: shipment, isLoading: shipmentLoading } = useQuery({
     queryKey: ["shipment", shipmentId],
     queryFn: () => getShipment(shipmentId),
     enabled: !!shipmentId,
   });
 
-  const drumIds = shipment?.drums ?? [];
+  // Delivery's own site + drums when set, else every shipment site.
+  const groups = siteId
+    ? [
+        {
+          site: siteId,
+          site_name: shipment?.sites?.find((s) => s.site === siteId)?.site_name,
+          drums: deliveryDrumIds ?? [],
+        },
+      ]
+    : (shipment?.sites ?? []).map((s) => ({
+        site: s.site,
+        site_name: s.site_name,
+        drums: s.drums ?? [],
+      }));
+  const drumIds = Array.from(new Set(groups.flatMap((g) => g.drums)));
   const { data: drumsData, isLoading: drumsLoading } = useQuery({
     queryKey: ["truck-delivery-traceability-drums", shipmentId, drumIds],
     queryFn: () =>
       getDrums({ ids: drumIds.join(","), page_size: drumIds.length }),
     enabled: drumIds.length > 0,
   });
-  const drums = drumsData?.results ?? [];
+  const drumsById = new Map((drumsData?.results ?? []).map((d) => [d.id, d]));
 
   if (shipmentLoading) {
     return <Spinner />;
@@ -66,35 +82,74 @@ const TruckDeliveryTraceability: React.FC<{ shipmentId: string }> = ({
         />
       </div>
 
-      {drumsLoading ? (
+      {drumIds.length > 0 && drumsLoading ? (
         <Spinner />
-      ) : drums.length === 0 ? (
+      ) : groups.length === 0 ? (
         <p className="text-muted small mb-0">
-          No drums are linked to this shipment yet.
+          No destination sites on this shipment.
         </p>
       ) : (
-        <Table responsive hover size="sm" className="mb-0">
-          <thead>
-            <tr>
-              <th>Drum Number</th>
-              <th>Container</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {drums.map((d) => (
-              <tr key={d.id}>
-                <td className="fw-bold">{formatDrumNumber(d.drum_number)}</td>
-                <td>{d.container_no || "—"}</td>
-                <td>
-                  <StatusBadge
-                    status={DRUM_STATUS_LABELS[d.status] ?? d.status}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <Accordion alwaysOpen className="d-flex flex-column gap-3">
+          {groups.map((g) => {
+            const siteDrums = g.drums
+              .map((id) => drumsById.get(id))
+              .filter((d) => !!d);
+            return (
+              <Accordion.Item
+                eventKey={g.site}
+                key={g.site}
+                className="border rounded"
+              >
+                <Accordion.Header>
+                  <div className="d-flex align-items-center justify-content-between w-100 me-3">
+                    <span>{g.site_name}</span>
+                    <span className="text-muted">Drums ({g.drums.length})</span>
+                  </div>
+                </Accordion.Header>
+                <Accordion.Body className="p-0">
+                  {siteDrums.length === 0 ? (
+                    <p className="text-muted text-center py-3 mb-0">
+                      No drums assigned to this site yet.
+                    </p>
+                  ) : (
+                    <Table responsive hover className="mb-0">
+                      <thead>
+                        <tr>
+                          <th>Drum Number</th>
+                          <th>Container</th>
+                          <th>Length (KMs)</th>
+                          <th>Net (MT)</th>
+                          <th>Gross (MT)</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {siteDrums.map((d) => (
+                          <tr key={d.id}>
+                            <td className="fw-bold">
+                              {formatDrumNumber(d.drum_number)}
+                            </td>
+                            <td>{d.container_no || "—"}</td>
+                            <td>{d.length_kms}</td>
+                            <td>{d.net_weight_mt}</td>
+                            <td>{d.gross_weight_mt}</td>
+                            <td>
+                              <StatusBadge
+                                status={
+                                  DRUM_STATUS_LABELS[d.status] ?? d.status
+                                }
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Accordion.Body>
+              </Accordion.Item>
+            );
+          })}
+        </Accordion>
       )}
     </div>
   );
@@ -184,7 +239,11 @@ export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
         <div className="mt-4">
           <h5 className="mb-3">Shipment &amp; Drums (Traceability)</h5>
           {delivery.shipment ? (
-            <TruckDeliveryTraceability shipmentId={delivery.shipment} />
+            <TruckDeliveryTraceability
+              shipmentId={delivery.shipment}
+              siteId={delivery.site}
+              deliveryDrumIds={delivery.drums}
+            />
           ) : (
             <p className="text-muted small mb-0">
               This truck delivery isn&apos;t linked to a shipment.

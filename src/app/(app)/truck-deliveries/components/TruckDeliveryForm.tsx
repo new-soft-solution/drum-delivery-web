@@ -21,6 +21,7 @@ import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import { ShipmentPicker } from "./ShipmentPicker";
+import { TruckDeliverySiteDrumsField } from "./TruckDeliverySiteDrumsField";
 import RHFPhoneNumberInput from "@/components/ui/PhoneNumberInput/RHFPhoneNumberInput";
 
 interface TruckDeliveryFormProps {
@@ -47,6 +48,8 @@ export const TruckDeliveryForm = ({
     defaultValues: {
       truck_number: delivery?.truck_number || "",
       shipment: delivery?.shipment || "",
+      site: delivery?.site || "",
+      drums: delivery?.drums ?? [],
       driver_name: delivery?.driver_name || "",
       driver_phone: delivery?.driver_phone || "",
       license_plate: delivery?.license_plate || "",
@@ -59,6 +62,8 @@ export const TruckDeliveryForm = ({
   });
 
   const shipmentValue = useWatch({ control: form.control, name: "shipment" });
+  const siteValue = useWatch({ control: form.control, name: "site" }) ?? "";
+  const drumsValue = useWatch({ control: form.control, name: "drums" }) ?? [];
 
   const mutation = useMutation<
     unknown,
@@ -94,16 +99,32 @@ export const TruckDeliveryForm = ({
         <Col md={6}>
           <ShipmentPicker
             value={shipmentValue}
-            onChange={(id) =>
+            onChange={(id) => {
               form.setValue("shipment", id, {
                 shouldValidate: true,
                 shouldDirty: true,
-              })
-            }
+              });
+              // Sites and drums belong to the shipment — reset the cascade.
+              form.setValue("site", "", { shouldDirty: true });
+              form.setValue("drums", [], { shouldDirty: true });
+            }}
             isInvalid={!!form.formState.errors.shipment}
             errorMessage={form.formState.errors.shipment?.message}
           />
         </Col>
+        <TruckDeliverySiteDrumsField
+          shipmentId={shipmentValue}
+          siteId={siteValue}
+          drumIds={drumsValue}
+          onSiteChange={(id) => {
+            form.setValue("site", id, { shouldDirty: true });
+            form.setValue("drums", [], { shouldDirty: true });
+          }}
+          onDrumsChange={(ids) =>
+            form.setValue("drums", ids, { shouldDirty: true })
+          }
+          siteError={form.formState.errors.site?.message}
+        />
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>

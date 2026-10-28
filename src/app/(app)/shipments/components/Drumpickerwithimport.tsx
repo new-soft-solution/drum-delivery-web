@@ -86,6 +86,8 @@ export const DrumPickerWithImport = ({
             size="sm"
             type="button"
             onClick={openBulkImport}
+            className="position-absolute"
+            style={{ top: "-10px", right: 0 }}
           >
             Bulk Import (.xlsx)
           </Button>
@@ -95,6 +97,7 @@ export const DrumPickerWithImport = ({
         show={showBulkImport}
         onHide={() => setShowBulkImport(false)}
         onImported={handleImported}
+        contentClassName="border border-2 rounded-3"
       />
     </>
   );

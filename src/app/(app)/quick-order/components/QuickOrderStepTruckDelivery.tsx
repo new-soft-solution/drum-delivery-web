@@ -1,6 +1,6 @@
 "use client";
 import { Button, Col, Form, Row } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
@@ -14,6 +14,7 @@ import type { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import type { QuickOrderState } from "../page";
+import { TruckDeliverySiteDrumsField } from "@/app/(app)/truck-deliveries/components/TruckDeliverySiteDrumsField";
 import RHFPhoneNumberInput from "@/components/ui/PhoneNumberInput/RHFPhoneNumberInput";
 
 interface StepTruckDeliveryProps {
@@ -34,6 +35,8 @@ export const QuickOrderStepTruckDelivery = ({
     defaultValues: {
       truck_number: "",
       shipment: state.shipmentId || "",
+      site: "",
+      drums: [],
       driver_name: "",
       driver_phone: "",
       license_plate: "",
@@ -41,6 +44,10 @@ export const QuickOrderStepTruckDelivery = ({
       notes: "",
     },
   });
+
+  const shipmentId = state.shipmentId || "";
+  const siteValue = useWatch({ control: form.control, name: "site" }) ?? "";
+  const drumsValue = useWatch({ control: form.control, name: "drums" }) ?? [];
 
   const mutation = useMutation<
     TruckDelivery,
@@ -75,6 +82,19 @@ export const QuickOrderStepTruckDelivery = ({
         For shipment <strong>{state.shipmentNumber}</strong>.
       </p>
       <Row>
+        <TruckDeliverySiteDrumsField
+          shipmentId={shipmentId}
+          siteId={siteValue}
+          drumIds={drumsValue}
+          onSiteChange={(id) => {
+            form.setValue("site", id, { shouldDirty: true });
+            form.setValue("drums", [], { shouldDirty: true });
+          }}
+          onDrumsChange={(ids) =>
+            form.setValue("drums", ids, { shouldDirty: true })
+          }
+          siteError={form.formState.errors.site?.message}
+        />
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>

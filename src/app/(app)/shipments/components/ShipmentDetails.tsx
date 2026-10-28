@@ -2,8 +2,12 @@
 
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { SiteName } from "@/components/ui/SiteName/SiteName";
-import { Shipment, SHIPMENT_STATUS_LABELS } from "@/types/shipment.type";
+import {
+  getShipmentDrumIds,
+  getShipmentSiteNames,
+  Shipment,
+  SHIPMENT_STATUS_LABELS,
+} from "@/types/shipment.type";
 import React from "react";
 import { formatDateNL } from "@/utils/dateFormatter";
 
@@ -23,7 +27,7 @@ export const ShipmentDetails: React.FC<{ shipment: Shipment }> = ({
             />
             <DetailRow
               label="Destination"
-              value={<SiteName siteId={shipment.destination_site} />}
+              value={getShipmentSiteNames(shipment).join(", ") || "—"}
               icon="ri-map-pin-line"
             />
             <DetailRow
@@ -65,7 +69,7 @@ export const ShipmentDetails: React.FC<{ shipment: Shipment }> = ({
             />
             <DetailRow
               label="Linked Drums"
-              value={shipment.drums.length}
+              value={getShipmentDrumIds(shipment).length}
               icon="ri-box-3-line"
             />
           </div>

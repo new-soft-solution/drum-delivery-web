@@ -31,7 +31,7 @@ const selectStyles = {
 };
 
 const ShipmentFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
-  const destinationSite = (tempFilters.destination_site as string) || "";
+  const destinationSite = (tempFilters.site as string) || "";
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
       queryKey: ["sites-for-shipment-filter"],
@@ -108,7 +108,7 @@ const ShipmentFilter = ({ tempFilters, onTempFilterChange }: FilterProps) => {
             onChange={(option) =>
               onTempFilterChange({
                 ...tempFilters,
-                destination_site: option?.value ?? undefined,
+                site: option?.value ?? undefined,
               })
             }
             isSearchable
