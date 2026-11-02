@@ -1,5 +1,6 @@
 "use client";
-import { Button, Col, Form, Row } from "react-bootstrap";
+import { useState } from "react";
+import { Button, Col, Form, Nav, Row } from "react-bootstrap";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
 import { ShipmentPicker } from "./ShipmentPicker";
 import { TruckDeliverySiteDrumsField } from "./TruckDeliverySiteDrumsField";
+import { AttachmentManager } from "@/components/ui/AttachmentManager/AttachmentManager";
 import RHFPhoneNumberInput from "@/components/ui/PhoneNumberInput/RHFPhoneNumberInput";
 
 interface TruckDeliveryFormProps {
@@ -41,6 +43,11 @@ export const TruckDeliveryForm = ({
 }: TruckDeliveryFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!delivery;
+  // After a create, the form switches to the Attachments tab for the new id.
+  const [savedId, setSavedId] = useState<string | undefined>(delivery?.id);
+  const [activeTab, setActiveTab] = useState<"details" | "attachments">(
+    "details",
+  );
   const { showNotification } = useNotificationContext();
 
   const form = useForm<TruckDeliveryFormValues>({
@@ -66,23 +73,28 @@ export const TruckDeliveryForm = ({
   const drumsValue = useWatch({ control: form.control, name: "drums" }) ?? [];
 
   const mutation = useMutation<
-    unknown,
+    TruckDelivery,
     NormalizedError,
     TruckDeliveryFormValues
   >({
     mutationFn: (payload) =>
-      isEdit && delivery?.id
-        ? updateTruckDelivery(delivery.id, payload)
+      savedId
+        ? updateTruckDelivery(savedId, payload)
         : createTruckDelivery(payload),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       showNotification({
-        message: isEdit
+        message: savedId
           ? "Truck delivery updated successfully"
           : "Truck delivery scheduled successfully",
         variant: "success",
       });
       queryClient.invalidateQueries({ queryKey: ["truck-deliveries"] });
-      onSuccess();
+      if (savedId) {
+        onSuccess();
+        return;
+      }
+      setSavedId(saved.id);
+      setActiveTab("attachments");
     },
     onError: (error) => {
       showNotification({
@@ -94,160 +106,192 @@ export const TruckDeliveryForm = ({
   });
 
   return (
-    <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
-      <Row>
-        <Col md={6}>
-          <ShipmentPicker
-            value={shipmentValue}
-            onChange={(id) => {
-              form.setValue("shipment", id, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-              // Sites and drums belong to the shipment — reset the cascade.
-              form.setValue("site", "", { shouldDirty: true });
+    <>
+      <Nav
+        variant="tabs"
+        className="mb-3"
+        activeKey={activeTab}
+        onSelect={(k) => k && setActiveTab(k as "details" | "attachments")}
+      >
+        <Nav.Item>
+          <Nav.Link eventKey="details">Details</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="attachments" disabled={!savedId}>
+            Attachments
+          </Nav.Link>
+        </Nav.Item>
+      </Nav>
+
+      {activeTab === "attachments" && savedId && (
+        <div>
+          <AttachmentManager owner={{ truck_delivery: savedId }} />
+          <div className="d-flex justify-content-end mt-4">
+            <Button variant="primary" onClick={onSuccess}>
+              Done
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Form
+        className={activeTab === "details" ? undefined : "d-none"}
+        onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+      >
+        <Row>
+          <Col md={6}>
+            <ShipmentPicker
+              value={shipmentValue}
+              onChange={(id) => {
+                form.setValue("shipment", id, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                // Sites and drums belong to the shipment — reset the cascade.
+                form.setValue("site", "", { shouldDirty: true });
+                form.setValue("drums", [], { shouldDirty: true });
+              }}
+              isInvalid={!!form.formState.errors.shipment}
+              errorMessage={form.formState.errors.shipment?.message}
+            />
+          </Col>
+          <TruckDeliverySiteDrumsField
+            shipmentId={shipmentValue}
+            siteId={siteValue}
+            drumIds={drumsValue}
+            onSiteChange={(id) => {
+              form.setValue("site", id, { shouldDirty: true });
               form.setValue("drums", [], { shouldDirty: true });
             }}
-            isInvalid={!!form.formState.errors.shipment}
-            errorMessage={form.formState.errors.shipment?.message}
+            onDrumsChange={(ids) =>
+              form.setValue("drums", ids, { shouldDirty: true })
+            }
+            siteError={form.formState.errors.site?.message}
           />
-        </Col>
-        <TruckDeliverySiteDrumsField
-          shipmentId={shipmentValue}
-          siteId={siteValue}
-          drumIds={drumsValue}
-          onSiteChange={(id) => {
-            form.setValue("site", id, { shouldDirty: true });
-            form.setValue("drums", [], { shouldDirty: true });
-          }}
-          onDrumsChange={(ids) =>
-            form.setValue("drums", ids, { shouldDirty: true })
-          }
-          siteError={form.formState.errors.site?.message}
-        />
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>
-              Truck Number <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Control
-              {...form.register("truck_number")}
-              isInvalid={!!form.formState.errors.truck_number}
-              placeholder="e.g., TR-001"
-            />
-            <Form.Control.Feedback type="invalid">
-              {form.formState.errors.truck_number?.message}
-            </Form.Control.Feedback>
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>License Plate</Form.Label>
-            <Form.Control
-              {...form.register("license_plate")}
-              placeholder="e.g., ABC-123"
-            />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>Driver Name</Form.Label>
-            <Form.Control
-              {...form.register("driver_name")}
-              placeholder="Enter driver name"
-            />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <RHFPhoneNumberInput
-              name="driver_phone"
-              control={form.control}
-              label="Driver Phone"
-              placeholder="Enter driver phone number"
-              defaultCountry="NL"
-              size={"lg"}
-            />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>Scheduled Date &amp; Time</Form.Label>
-            <Form.Control
-              type="datetime-local"
-              {...form.register("scheduled_date")}
-            />
-          </Form.Group>
-        </Col>
-        {isEdit && (
-          <>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Actual Departure</Form.Label>
-                <Form.Control
-                  type="datetime-local"
-                  {...form.register("actual_departure_date")}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Actual Arrival</Form.Label>
-                <Form.Control
-                  type="datetime-local"
-                  {...form.register("actual_arrival_date")}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group className="mb-3">
-                <Form.Label>Status</Form.Label>
-                <Form.Select {...form.register("status")}>
-                  {TRUCK_DELIVERY_STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {TRUCK_DELIVERY_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </>
-        )}
-        <Col md={12}>
-          <Form.Group className="mb-3">
-            <Form.Label>Notes</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={3}
-              {...form.register("notes")}
-              placeholder="Additional notes or special instructions..."
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <div className="d-flex justify-content-end gap-2">
-        <Button
-          variant="outline-secondary"
-          onClick={onCancel}
-          disabled={mutation.isPending}
-        >
-          Cancel
-        </Button>
-        <Button variant="primary" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? (
-            <div className="d-flex align-items-center justify-content-center gap-1">
-              <span>Submitting...</span>
-              <Spinner color="white" size="sm" className="me-2" />
-            </div>
-          ) : isEdit ? (
-            "Update Delivery"
-          ) : (
-            "Schedule Truck Delivery"
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>
+                Truck Number <span className="text-danger">*</span>
+              </Form.Label>
+              <Form.Control
+                {...form.register("truck_number")}
+                isInvalid={!!form.formState.errors.truck_number}
+                placeholder="e.g., TR-001"
+              />
+              <Form.Control.Feedback type="invalid">
+                {form.formState.errors.truck_number?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>License Plate</Form.Label>
+              <Form.Control
+                {...form.register("license_plate")}
+                placeholder="e.g., ABC-123"
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>Driver Name</Form.Label>
+              <Form.Control
+                {...form.register("driver_name")}
+                placeholder="Enter driver name"
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <RHFPhoneNumberInput
+                name="driver_phone"
+                control={form.control}
+                label="Driver Phone"
+                placeholder="Enter driver phone number"
+                defaultCountry="NL"
+                size={"lg"}
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>Scheduled Date &amp; Time</Form.Label>
+              <Form.Control
+                type="datetime-local"
+                {...form.register("scheduled_date")}
+              />
+            </Form.Group>
+          </Col>
+          {isEdit && (
+            <>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Actual Departure</Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    {...form.register("actual_departure_date")}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Actual Arrival</Form.Label>
+                  <Form.Control
+                    type="datetime-local"
+                    {...form.register("actual_arrival_date")}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select {...form.register("status")}>
+                    {TRUCK_DELIVERY_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {TRUCK_DELIVERY_STATUS_LABELS[s]}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </>
           )}
-        </Button>
-      </div>
-    </Form>
+          <Col md={12}>
+            <Form.Group className="mb-3">
+              <Form.Label>Notes</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                {...form.register("notes")}
+                placeholder="Additional notes or special instructions..."
+              />
+            </Form.Group>
+          </Col>
+        </Row>
+
+        <div className="d-flex justify-content-end gap-2">
+          <Button
+            variant="outline-secondary"
+            onClick={onCancel}
+            disabled={mutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? (
+              <div className="d-flex align-items-center justify-content-center gap-1">
+                <span>Submitting...</span>
+                <Spinner color="white" size="sm" className="me-2" />
+              </div>
+            ) : savedId ? (
+              "Update Delivery"
+            ) : (
+              "Schedule Truck Delivery"
+            )}
+          </Button>
+        </div>
+      </Form>
+    </>
   );
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Accordion, Table } from "react-bootstrap";
+import { Accordion, Table, Nav } from "react-bootstrap";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import {
@@ -9,12 +9,13 @@ import {
   TruckDelivery,
 } from "@/types/truck-delivery.type";
 import { DRUM_STATUS_LABELS } from "@/types/drum.type";
-import React from "react";
+import React, { useState } from "react";
 import { formatDateNLAMPMSS } from "@/utils/dateFormatter";
 import { formatDrumNumber } from "@/utils/formatDrumNumber";
 import { getShipment } from "@/services/shipment.service";
 import { getDrums } from "@/services/drum.service";
 import Spinner from "@/components/Spinner";
+import { AttachmentManager } from "@/components/ui/AttachmentManager/AttachmentManager";
 
 const TruckDeliveryTraceability: React.FC<{
   shipmentId: string;
@@ -158,100 +159,124 @@ const TruckDeliveryTraceability: React.FC<{
 export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
   delivery,
 }) => {
+  const [tab, setTab] = useState<"details" | "attachments">("details");
   return (
-    <div className="card">
-      <div className="card-body">
-        <h4 className="card-title mb-4">Truck Delivery Information</h4>
-        <div className="row">
-          <div className="col-md-6">
-            <DetailRow
-              label="Truck Number"
-              value={delivery.truck_number || "—"}
-              icon="ri-truck-line"
-            />
-            <DetailRow
-              label="Shipment"
-              value={delivery.shipment_number || "—"}
-              icon="ri-ship-line"
-            />
-            <DetailRow
-              label="License Plate"
-              value={delivery.license_plate || "—"}
-              icon="ri-car-line"
-            />
-            <DetailRow
-              label="Driver"
-              value={delivery.driver_name || "—"}
-              icon="ri-user-line"
-            />
-            <DetailRow
-              label="Driver Phone"
-              value={delivery.driver_phone || "—"}
-              icon="ri-phone-line"
-            />
-          </div>
-          <div className="col-md-6">
-            <DetailRow
-              label="Status"
-              value={
-                <StatusBadge
-                  status={
-                    TRUCK_DELIVERY_STATUS_LABELS[delivery.status] ??
-                    delivery.status
-                  }
+    <>
+      <Nav
+        variant="tabs"
+        className="mb-3"
+        activeKey={tab}
+        onSelect={(k) => k && setTab(k as "details" | "attachments")}
+      >
+        <Nav.Item>
+          <Nav.Link eventKey="details">Details</Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link eventKey="attachments">Attachments</Nav.Link>
+        </Nav.Item>
+      </Nav>
+      {tab === "details" ? (
+        <div className="card">
+          <div className="card-body">
+            <h4 className="card-title mb-4">Truck Delivery Information</h4>
+            <div className="row">
+              <div className="col-md-6">
+                <DetailRow
+                  label="Truck Number"
+                  value={delivery.truck_number || "—"}
+                  icon="ri-truck-line"
                 />
-              }
-              icon="ri-radar-line"
-            />
-            <DetailRow
-              label="Scheduled"
-              value={
-                delivery.scheduled_date
-                  ? formatDateNLAMPMSS(delivery.scheduled_date)
-                  : "—"
-              }
-              icon="ri-calendar-line"
-            />
-            <DetailRow
-              label="Actual Departure"
-              value={
-                delivery.actual_departure_date
-                  ? formatDateNLAMPMSS(delivery.actual_departure_date)
-                  : "—"
-              }
-              icon="ri-logout-box-line"
-            />
-            <DetailRow
-              label="Actual Arrival"
-              value={
-                delivery.actual_arrival_date
-                  ? formatDateNLAMPMSS(delivery.actual_arrival_date)
-                  : "—"
-              }
-              icon="ri-login-box-line"
-            />
+                <DetailRow
+                  label="Shipment"
+                  value={delivery.shipment_number || "—"}
+                  icon="ri-ship-line"
+                />
+                <DetailRow
+                  label="License Plate"
+                  value={delivery.license_plate || "—"}
+                  icon="ri-car-line"
+                />
+                <DetailRow
+                  label="Driver"
+                  value={delivery.driver_name || "—"}
+                  icon="ri-user-line"
+                />
+                <DetailRow
+                  label="Driver Phone"
+                  value={delivery.driver_phone || "—"}
+                  icon="ri-phone-line"
+                />
+              </div>
+              <div className="col-md-6">
+                <DetailRow
+                  label="Status"
+                  value={
+                    <StatusBadge
+                      status={
+                        TRUCK_DELIVERY_STATUS_LABELS[delivery.status] ??
+                        delivery.status
+                      }
+                    />
+                  }
+                  icon="ri-radar-line"
+                />
+                <DetailRow
+                  label="Scheduled"
+                  value={
+                    delivery.scheduled_date
+                      ? formatDateNLAMPMSS(delivery.scheduled_date)
+                      : "—"
+                  }
+                  icon="ri-calendar-line"
+                />
+                <DetailRow
+                  label="Actual Departure"
+                  value={
+                    delivery.actual_departure_date
+                      ? formatDateNLAMPMSS(delivery.actual_departure_date)
+                      : "—"
+                  }
+                  icon="ri-logout-box-line"
+                />
+                <DetailRow
+                  label="Actual Arrival"
+                  value={
+                    delivery.actual_arrival_date
+                      ? formatDateNLAMPMSS(delivery.actual_arrival_date)
+                      : "—"
+                  }
+                  icon="ri-login-box-line"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <h5>Notes</h5>
+              <p className="text-muted mb-0">{delivery.notes || "No notes"}</p>
+            </div>
+            <div className="mt-4">
+              <h5 className="mb-3">Shipment &amp; Drums (Traceability)</h5>
+              {delivery.shipment ? (
+                <TruckDeliveryTraceability
+                  shipmentId={delivery.shipment}
+                  siteId={delivery.site}
+                  deliveryDrumIds={delivery.drums}
+                />
+              ) : (
+                <p className="text-muted small mb-0">
+                  This truck delivery isn&apos;t linked to a shipment.
+                </p>
+              )}
+            </div>
           </div>
         </div>
-        <div className="mt-3">
-          <h5>Notes</h5>
-          <p className="text-muted mb-0">{delivery.notes || "No notes"}</p>
+      ) : (
+        <div className="card">
+          <div className="card-body">
+            <AttachmentManager owner={{ truck_delivery: delivery.id }} />
+          </div>
         </div>
-        <div className="mt-4">
-          <h5 className="mb-3">Shipment &amp; Drums (Traceability)</h5>
-          {delivery.shipment ? (
-            <TruckDeliveryTraceability
-              shipmentId={delivery.shipment}
-              siteId={delivery.site}
-              deliveryDrumIds={delivery.drums}
-            />
-          ) : (
-            <p className="text-muted small mb-0">
-              This truck delivery isn&apos;t linked to a shipment.
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 

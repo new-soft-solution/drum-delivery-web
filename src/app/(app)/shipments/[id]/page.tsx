@@ -14,6 +14,7 @@ import ErrorMessage from "@/components/ui/ErrorMessage/ErrorMessage";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import DetailRow from "@/components/ui/DetailRow/DetailRow";
 import { ShipmentDrumsTab } from "./components/ShipmentDrumsTab";
+import { AttachmentManager } from "@/components/ui/AttachmentManager/AttachmentManager";
 import { ShipmentOrdersTab } from "./components/ShipmentOrdersTab";
 import { formatDateNL } from "@/utils/dateFormatter";
 
@@ -89,6 +90,9 @@ export default function ShipmentDetailPage() {
             <Nav.Link eventKey="orders">
               Orders ({shipment.orders.length})
             </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="attachments">Attachments</Nav.Link>
           </Nav.Item>
         </Nav>
         <TabContent>
@@ -166,6 +170,13 @@ export default function ShipmentDetailPage() {
             <div className="card">
               <div className="card-body">
                 <ShipmentOrdersTab shipmentId={id} />
+              </div>
+            </div>
+          </TabPane>
+          <TabPane eventKey="attachments">
+            <div className="card">
+              <div className="card-body">
+                <AttachmentManager owner={{ shipment: id }} />
               </div>
             </div>
           </TabPane>
