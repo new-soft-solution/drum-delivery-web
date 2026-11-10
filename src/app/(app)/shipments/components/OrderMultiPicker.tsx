@@ -55,8 +55,7 @@ export const OrderMultiPicker = ({
     useInfiniteQuery({
       queryKey: ["orders-picker"],
       initialPageParam: 1,
-      queryFn: ({ pageParam }) =>
-        getOrders({ page: pageParam, page_size: 20, status: "CREATED" }),
+      queryFn: ({ pageParam }) => getOrders({ page: pageParam, page_size: 20 }),
       getNextPageParam: (lastPage, allPages) => {
         const loaded = allPages.reduce(
           (n, p) => n + (p?.results?.length ?? 0),
