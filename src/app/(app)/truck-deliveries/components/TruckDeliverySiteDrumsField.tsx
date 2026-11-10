@@ -1,8 +1,8 @@
 "use client";
 import { useMemo } from "react";
-import { Col, Form } from "react-bootstrap";
+import { Badge, Col, Form } from "react-bootstrap";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import Select from "react-select";
+import Select, { components } from "react-select";
 import { getSites } from "@/services/site.service";
 import { getDrums } from "@/services/drum.service";
 import { formatDrumNumber } from "@/utils/formatDrumNumber";
@@ -88,6 +88,8 @@ export const TruckDeliverySiteDrumsField = ({
     staleTime: 60 * 1000,
   });
 
+  const drumCount = drumsData?.pages?.[0]?.count;
+
   const drums = useMemo(() => {
     const all = (drumsData?.pages ?? []).flatMap((p) => p?.results ?? []);
     const seen = new Set<string>();
@@ -129,6 +131,18 @@ export const TruckDeliverySiteDrumsField = ({
             isSearchable
             isClearable
             isLoading={sitesLoading}
+            components={{
+              SingleValue: (props) => (
+                <components.SingleValue {...props}>
+                  {props.data.label}
+                  {drumCount !== undefined && (
+                    <Badge bg="primary" pill className="ms-2">
+                      {drumCount} {drumCount === 1 ? "drum" : "drums"}
+                    </Badge>
+                  )}
+                </components.SingleValue>
+              ),
+            }}
             noOptionsMessage={() => "No sites on this shipment."}
             placeholder={
               shipmentId ? "Select site…" : "Select a shipment first"

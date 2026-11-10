@@ -86,11 +86,16 @@ export const deleteDrum = async ({ id, ids }: DeleteProps): Promise<void> => {
   }
 };
 
+export interface BulkImportRowError {
+  row: number;
+  error: string;
+}
+
 export interface BulkImportResult {
+  message?: string;
   created?: number;
-  failed?: number;
-  errors?: unknown[];
-  [key: string]: unknown;
+  skipped?: number;
+  errors?: BulkImportRowError[];
 }
 
 export const bulkImportDrums = async (
