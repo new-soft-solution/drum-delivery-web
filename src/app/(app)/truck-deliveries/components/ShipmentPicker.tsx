@@ -36,7 +36,7 @@ const selectStyles = (isInvalid?: boolean) => ({
 
 const mapShipmentToOption = (s: Shipment): Option => ({
   value: s.id,
-  label: s.shipment_number,
+  label: s.invoice_no,
 });
 
 export const ShipmentPicker = ({

@@ -115,7 +115,7 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
         <Table responsive hover>
           <thead>
             <tr>
-              <th>Order Number</th>
+              <th>Customer Order Number</th>
               <th>Client</th>
               <th>Status</th>
               <th></th>
