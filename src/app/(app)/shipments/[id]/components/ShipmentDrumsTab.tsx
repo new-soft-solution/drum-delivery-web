@@ -1,4 +1,5 @@
 "use client";
+import { useIsReadOnly } from "@/utils/permissions";
 import { useState } from "react";
 import { Accordion, Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,12 +20,14 @@ const SiteDrumsTable = ({
   drumIds,
   removing,
   onRemove,
+  readOnly,
 }: {
   shipmentId: string;
   siteId: string;
   drumIds: string[];
   removing: boolean;
   onRemove: (drumId: string) => void;
+  readOnly?: boolean;
 }) => {
   const { data, isLoading } = useQuery({
     queryKey: ["shipment-site-drums", shipmentId, siteId, drumIds],
@@ -68,15 +71,17 @@ const SiteDrumsTable = ({
               <StatusBadge status={DRUM_STATUS_LABELS[d.status] ?? d.status} />
             </td>
             <td>
-              <Button
-                variant="link"
-                size="sm"
-                className="text-danger"
-                disabled={removing}
-                onClick={() => onRemove(d.id)}
-              >
-                Remove
-              </Button>
+              {!readOnly && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  disabled={removing}
+                  onClick={() => onRemove(d.id)}
+                >
+                  Remove
+                </Button>
+              )}
             </td>
           </tr>
         ))}
@@ -86,6 +91,7 @@ const SiteDrumsTable = ({
 };
 
 export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
+  const isClient = useIsReadOnly();
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [assignSiteId, setAssignSiteId] = useState<string | null>(null);
@@ -153,18 +159,20 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
                     <span className="text-muted">
                       Drums ({(s.drums ?? []).length})
                     </span>
-                    <Button
-                      as="span"
-                      role="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAssignSiteId(s.site);
-                      }}
-                    >
-                      Assign Drums
-                    </Button>
+                    {!isClient && (
+                      <Button
+                        as="span"
+                        role="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignSiteId(s.site);
+                        }}
+                      >
+                        Assign Drums
+                      </Button>
+                    )}
                   </div>
                 </Accordion.Header>
                 <Accordion.Body className="p-0">
@@ -175,6 +183,7 @@ export const ShipmentDrumsTab = ({ shipmentId }: { shipmentId: string }) => {
                       drumIds={s.drums ?? []}
                       removing={removeMutation.isPending}
                       onRemove={(id) => removeMutation.mutate(id)}
+                      readOnly={isClient}
                     />
                   )}
                 </Accordion.Body>

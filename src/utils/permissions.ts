@@ -100,18 +100,55 @@ export const usePermissions = () => {
   );
 };
 
+export const ROLES = {
+  Admin: "Admin",
+  Shipper: "Shipper",
+  Client: "Client",
+} as const;
+
+export const isClientRole = (role: string | undefined | null): boolean =>
+  (role ?? "").toLowerCase() === "client";
+
+/** True when the signed-in user has the read-only Client role. */
+export const useIsClient = (): boolean =>
+  useSessionStore((s) => isClientRole(s.session?.user?.role));
+
+export const isShipperRole = (role: string | undefined | null): boolean =>
+  (role ?? "").toLowerCase() === "shipper";
+
+/** Client and Shipper users can view only: no create/edit/delete. */
+export const isReadOnlyRole = (role: string | undefined | null): boolean =>
+  isClientRole(role) || isShipperRole(role);
+
+export const useIsReadOnly = (): boolean =>
+  useSessionStore((s) => isReadOnlyRole(s.session?.user?.role));
+
+/** Modules a Client user may open (read-only, scoped to their company). */
+const CLIENT_VISIBLE_MODULES: readonly ModuleKey[] = [
+  "orders",
+  "shipments",
+  "shipmentDrums",
+  "truckDeliveries",
+];
+
 export const useModulePermissions = (moduleKey: ModuleKey) => {
   const { has } = usePermissions();
+  const isClient = useIsClient();
+  const isReadOnly = useIsReadOnly();
   const codes = MODULE_PERMISSIONS[moduleKey];
   return useMemo(
     () => ({
-      canAdd: has(codes.add),
-      canChange: has(codes.change),
-      canDelete: has(codes.delete),
-      canView: has(codes.view),
+      // Client and Shipper users are read-only: never expose operational actions,
+      // whatever the backend permission list says.
+      canAdd: !isReadOnly && has(codes.add),
+      canChange: !isReadOnly && has(codes.change),
+      canDelete: !isReadOnly && has(codes.delete),
+      canView:
+        has(codes.view) &&
+        (!isClient || CLIENT_VISIBLE_MODULES.includes(moduleKey)),
       has,
     }),
-    [has, codes],
+    [has, codes, isClient, isReadOnly, moduleKey],
   );
 };
 

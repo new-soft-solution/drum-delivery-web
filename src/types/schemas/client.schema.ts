@@ -11,6 +11,18 @@ export const clientFormSchema = z.object({
   country: z.string().max(100).optional().or(z.literal("")),
   postal_code: z.string().max(20).optional().or(z.literal("")),
   is_active: z.boolean().optional(),
+  create_account: z.boolean().optional(),
+  password: z.string().optional().or(z.literal("")),
+});
+
+export const clientCreateFormSchema = clientFormSchema.superRefine((v, ctx) => {
+  if (v.create_account && !v.password) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["password"],
+      message: "Password is required to create an account",
+    });
+  }
 });
 
 export type ClientFormValues = z.infer<typeof clientFormSchema>;

@@ -1,4 +1,5 @@
 "use client";
+import { useIsClient } from "@/utils/permissions";
 
 import { useQuery } from "@tanstack/react-query";
 import { Accordion, Table, Nav } from "react-bootstrap";
@@ -160,22 +161,25 @@ export const TruckDeliveryDetails: React.FC<{ delivery: TruckDelivery }> = ({
   delivery,
 }) => {
   const [tab, setTab] = useState<"details" | "attachments">("details");
+  const isClient = useIsClient();
   return (
     <>
-      <Nav
-        variant="tabs"
-        className="mb-3"
-        activeKey={tab}
-        onSelect={(k) => k && setTab(k as "details" | "attachments")}
-      >
-        <Nav.Item>
-          <Nav.Link eventKey="details">Details</Nav.Link>
-        </Nav.Item>
-        <Nav.Item>
-          <Nav.Link eventKey="attachments">Attachments</Nav.Link>
-        </Nav.Item>
-      </Nav>
-      {tab === "details" ? (
+      {!isClient && (
+        <Nav
+          variant="tabs"
+          className="mb-3"
+          activeKey={tab}
+          onSelect={(k) => k && setTab(k as "details" | "attachments")}
+        >
+          <Nav.Item>
+            <Nav.Link eventKey="details">Details</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="attachments">Attachments</Nav.Link>
+          </Nav.Item>
+        </Nav>
+      )}
+      {tab === "details" || isClient ? (
         <div className="card">
           <div className="card-body">
             <h4 className="card-title mb-4">Truck Delivery Information</h4>

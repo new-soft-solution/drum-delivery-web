@@ -17,10 +17,12 @@ import { ShipmentDrumsTab } from "./components/ShipmentDrumsTab";
 import { AttachmentManager } from "@/components/ui/AttachmentManager/AttachmentManager";
 import { ShipmentOrdersTab } from "./components/ShipmentOrdersTab";
 import { formatDateNL } from "@/utils/dateFormatter";
+import { useIsClient } from "@/utils/permissions";
 
 export default function ShipmentDetailPage() {
   const params = useParams();
   const id = String(params?.id ?? "");
+  const isClient = useIsClient();
 
   const {
     data: shipment,
@@ -91,9 +93,11 @@ export default function ShipmentDetailPage() {
               Orders ({shipment.orders.length})
             </Nav.Link>
           </Nav.Item>
-          <Nav.Item>
-            <Nav.Link eventKey="attachments">Attachments</Nav.Link>
-          </Nav.Item>
+          {!isClient && (
+            <Nav.Item>
+              <Nav.Link eventKey="attachments">Attachments</Nav.Link>
+            </Nav.Item>
+          )}
         </Nav>
         <TabContent>
           <TabPane eventKey="basic">
@@ -173,13 +177,15 @@ export default function ShipmentDetailPage() {
               </div>
             </div>
           </TabPane>
-          <TabPane eventKey="attachments">
-            <div className="card">
-              <div className="card-body">
-                <AttachmentManager owner={{ shipment: id }} />
+          {!isClient && (
+            <TabPane eventKey="attachments">
+              <div className="card">
+                <div className="card-body">
+                  <AttachmentManager owner={{ shipment: id }} />
+                </div>
               </div>
-            </div>
-          </TabPane>
+            </TabPane>
+          )}
         </TabContent>
       </TabContainer>
     </div>
