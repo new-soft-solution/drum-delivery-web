@@ -22,6 +22,7 @@ export const MENU_ITEMS: MenuItemType[] = [
     url: "/clients",
     icon: "ri:building-line",
     permission: MODULE_PERMISSIONS.clients.view,
+    hideForClient: true,
   },
   {
     key: "sites",
@@ -30,6 +31,7 @@ export const MENU_ITEMS: MenuItemType[] = [
     url: "/sites",
     icon: "ri:map-pin-line",
     permission: MODULE_PERMISSIONS.sites.view,
+    hideForClient: true,
   },
   {
     key: "orders",
@@ -70,5 +72,6 @@ export const MENU_ITEMS: MenuItemType[] = [
     url: "/users",
     icon: "ri:user-settings-line",
     permission: MODULE_PERMISSIONS.users.view,
+    hideForClient: true,
   },
 ];

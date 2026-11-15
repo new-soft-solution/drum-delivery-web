@@ -3,6 +3,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "react-bootstrap";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import { EmptyState } from "@/components/ui/EmptyState/EmptyState";
+import { useIsReadOnly } from "@/utils/permissions";
 import { QuickOrderStepper } from "./components/QuickOrderStepper";
 import { QuickOrderStepOrder } from "./components/QuickOrderStepOrder";
 import { QuickOrderStepShipment } from "./components/QuickOrderStepShipment";
@@ -22,6 +24,7 @@ export default function QuickOrderPage() {
   const [stepIndex, setStepIndex] = useState(0);
   const [state, setState] = useState<QuickOrderState>({});
   const [done, setDone] = useState(false);
+  const readOnly = useIsReadOnly();
 
   const furthestStep = state.truckDeliveryId
     ? 3
@@ -34,6 +37,16 @@ export default function QuickOrderPage() {
   const goTo = (index: number) => {
     if (index <= furthestStep) setStepIndex(index);
   };
+
+  if (readOnly) {
+    return (
+      <EmptyState
+        icon="ri:shield-cross-line"
+        title="You are not authorized to access this page"
+        description="Your account has view-only access."
+      />
+    );
+  }
 
   if (done) {
     return (

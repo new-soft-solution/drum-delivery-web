@@ -1,4 +1,5 @@
 "use client";
+import { useIsReadOnly } from "@/utils/permissions";
 import { useState } from "react";
 import { Button, Table } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
+  const isClient = useIsReadOnly();
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
   const [showAssign, setShowAssign] = useState(false);
@@ -87,18 +89,20 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5 className="mb-0">Orders in this Shipment</h5>
-        <div className="d-flex gap-2">
-          <Button
-            variant="outline-secondary"
-            size="sm"
-            onClick={() => setShowAssign(true)}
-          >
-            + Assign Orders
-          </Button>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            + New Order
-          </Button>
-        </div>
+        {!isClient && (
+          <div className="d-flex gap-2">
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setShowAssign(true)}
+            >
+              + Assign Orders
+            </Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              + New Order
+            </Button>
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -108,8 +112,8 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
           icon="ri:clipboard-line"
           title="No orders linked yet"
           description="Assign purchase orders to this shipment, or create a new one."
-          actionLabel="Assign Orders"
-          onAction={() => setShowAssign(true)}
+          actionLabel={isClient ? undefined : "Assign Orders"}
+          onAction={isClient ? undefined : () => setShowAssign(true)}
         />
       ) : (
         <Table responsive hover>
@@ -132,15 +136,17 @@ export const ShipmentOrdersTab = ({ shipmentId }: { shipmentId: string }) => {
                   <StatusBadge status={STATUS_LABELS[o.status] ?? o.status} />
                 </td>
                 <td>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-danger"
-                    disabled={removeMutation.isPending}
-                    onClick={() => removeMutation.mutate(o.id)}
-                  >
-                    Remove
-                  </Button>
+                  {!isClient && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="text-danger"
+                      disabled={removeMutation.isPending}
+                      onClick={() => removeMutation.mutate(o.id)}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

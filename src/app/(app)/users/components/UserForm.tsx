@@ -130,9 +130,8 @@ export const UserForm = ({
             <Form.Select {...form.register("role")}>
               <option value="">Select Role</option>
               <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-              <option value="Operator">Operator</option>
-              <option value="User">User</option>
+              <option value="Shipper">Shipper</option>
+              <option value="Client">Client</option>
             </Form.Select>
           </Form.Group>
         </Col>

@@ -1,11 +1,11 @@
 "use client";
 import { Button, Col, Form, Row } from "react-bootstrap";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
-import { Client } from "@/types/client.type";
-import { clientFormSchema, ClientFormValues } from "@/types/schemas/client.schema";
+import { Client, clientHasAccount } from "@/types/client.type";
+import { clientCreateFormSchema, ClientFormValues } from "@/types/schemas/client.schema";
 import { createClient, updateClient } from "@/services/client.service";
 import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
@@ -27,10 +27,11 @@ export const ClientForm = ({
 }: ClientFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!client;
+  const hasAccount = !!client && clientHasAccount(client);
   const { showNotification } = useNotificationContext();
 
   const form = useForm<ClientFormValues>({
-    resolver: zodResolver(clientFormSchema),
+    resolver: zodResolver(clientCreateFormSchema),
     defaultValues: {
       name: client?.name || "",
       email: client?.email || "",
@@ -42,14 +43,29 @@ export const ClientForm = ({
       country: client?.country || "",
       postal_code: client?.postal_code || "",
       is_active: client?.is_active ?? true,
+      create_account: false,
+      password: "",
     },
   });
+  const createAccount = useWatch({ control: form.control, name: "create_account" });
+  // Password is only relevant when creating an account, or changing the
+  // password of a client that already has one.
+  const showPassword = hasAccount || !!createAccount;
 
   const mutation = useMutation<unknown, NormalizedError, ClientFormValues>({
-    mutationFn: (payload) =>
-      isEdit && client?.id
+    mutationFn: (values) => {
+      const { create_account, password, ...rest } = values;
+      const payload: ClientFormValues = { ...rest };
+      if (!hasAccount && create_account) {
+        payload.create_account = true;
+        payload.password = password;
+      } else if (hasAccount && password) {
+        payload.password = password;
+      }
+      return isEdit && client?.id
         ? updateClient(client.id, payload)
-        : createClient(payload),
+        : createClient(payload);
+    },
     onSuccess: () => {
       showNotification({
         message: isEdit
@@ -180,6 +196,45 @@ export const ClientForm = ({
             />
           </Form.Group>
         </Col>
+        {!hasAccount && (
+          <Col md={12}>
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="switch"
+                id="client-create-account"
+                label="Create login account for this client"
+                {...form.register("create_account")}
+              />
+              <Form.Text className="text-muted">
+                The client signs in with the email above and this password.
+              </Form.Text>
+            </Form.Group>
+          </Col>
+        )}
+        {showPassword && (
+          <Col md={6}>
+            <Form.Group className="mb-3">
+              <Form.Label>
+                {hasAccount ? "New Password" : "Password"}{" "}
+                {!hasAccount && <span className="text-danger">*</span>}
+              </Form.Label>
+              <Form.Control
+                type="password"
+                autoComplete="new-password"
+                {...form.register("password")}
+                isInvalid={!!form.formState.errors.password}
+                placeholder={
+                  hasAccount
+                    ? "Leave blank to keep current password"
+                    : "Enter password"
+                }
+              />
+              <Form.Control.Feedback type="invalid">
+                {form.formState.errors.password?.message}
+              </Form.Control.Feedback>
+            </Form.Group>
+          </Col>
+        )}
         {isEdit && (
           <Col md={6}>
             <Form.Group className="mb-3 d-flex align-items-end pb-2">

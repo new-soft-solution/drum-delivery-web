@@ -16,6 +16,8 @@ export type MenuItemType = {
   isDisabled?: boolean;
   children?: MenuItemType[];
   permission?: string;
+  /** Hide this item for the read-only Client role. */
+  hideForClient?: boolean;
 };
 
 export type SubMenus = {
