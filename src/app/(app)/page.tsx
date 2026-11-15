@@ -6,6 +6,7 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import { getDashboard } from "@/services/dashboard.service";
 import { getTruckDeliveries } from "@/services/truck-delivery.service";
+import { useIsReadOnly } from "@/utils/permissions";
 import {
   getShipmentSiteNames,
   SHIPMENT_STATUS_LABELS,
@@ -157,6 +158,7 @@ function StatusDonut({
 }
 
 export default function DashboardPage() {
+  const isClient = useIsReadOnly();
   const { data: dashboard, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => getDashboard(),
@@ -178,6 +180,10 @@ export default function DashboardPage() {
     clients: dashboard ? dashboard.totals.clients : "—",
   };
 
+  const visibleStatCards = STAT_CARDS.filter(
+    (c) => !isClient || c.key === "orders" || c.key === "shipments",
+  );
+
   const donutSegments = (
     Object.keys(SHIPMENT_STATUS_LABELS) as ShipmentStatus[]
   )
@@ -198,15 +204,17 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/quick-order" className="btn btn-success">
-            <IconifyIcon icon="ri:flashlight-line" className="me-1" /> Quick
-            Order
-          </Link>
+          {!isClient && (
+            <Link href="/quick-order" className="btn btn-success">
+              <IconifyIcon icon="ri:flashlight-line" className="me-1" /> Quick
+              Order
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="row g-3 mb-3">
-        {STAT_CARDS.map((card) => (
+        {visibleStatCards.map((card) => (
           <div className="col-md-3 col-6" key={card.key}>
             <Link href={card.href} className="text-decoration-none">
               <div className="card h-100 border-0 shadow-sm">

@@ -11,6 +11,7 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import { useSessionStore } from "@/store/useSessionStore";
 import { logoutUser } from "@/services/auth/auth.service";
+import { isReadOnlyRole } from "@/utils/permissions";
 
 const TopNavigationBar = () => {
   const { scrollY } = useScrollEvent();
@@ -95,11 +96,15 @@ const TopNavigationBar = () => {
                     <IconifyIcon icon="ri:user-line" className="me-2" />
                     My Profile
                   </Dropdown.Item>
-                  <Dropdown.Divider className="m-0" />
-                  <Dropdown.Item as={Link} href="/quick-order">
-                    <IconifyIcon icon="ri:add-line" className="me-2" />
-                    Quick Order
-                  </Dropdown.Item>
+                  {!isReadOnlyRole(user?.role) && (
+                    <>
+                      <Dropdown.Divider className="m-0" />
+                      <Dropdown.Item as={Link} href="/quick-order">
+                        <IconifyIcon icon="ri:add-line" className="me-2" />
+                        Quick Order
+                      </Dropdown.Item>
+                    </>
+                  )}
                   <Dropdown.Divider className="m-0" />
                   <Dropdown.Item onClick={handleLogout} className="text-danger">
                     <IconifyIcon icon="ri:logout-box-r-line" className="me-2" />

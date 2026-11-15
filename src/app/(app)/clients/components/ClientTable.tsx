@@ -8,7 +8,7 @@ import ClientOrdersModal from "./ClientOrdersModal";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteClient, getClients } from "@/services/client.service";
-import { Client, ClientFilterType } from "@/types/client.type";
+import { Client, ClientFilterType, clientHasAccount } from "@/types/client.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -61,6 +61,12 @@ const EXPORT_COLUMNS: ExportColumn<Client>[] = [
     value: (c) => c.postal_code || "",
     xlsxWidth: 14,
     pdfWidth: 55,
+  },
+  {
+    header: "Account",
+    value: (c) => (clientHasAccount(c) ? "Yes" : "No"),
+    xlsxWidth: 10,
+    pdfWidth: 45,
   },
   {
     header: "Status",
@@ -188,6 +194,17 @@ export const ClientTable = () => {
         cell: (cell: CellContext<Client, unknown>) => (
           <StatusBadge
             status={cell.row.original.is_active ? "Active" : "Inactive"}
+          />
+        ),
+      },
+      {
+        header: "Account",
+        cell: (cell: CellContext<Client, unknown>) => (
+          <StatusBadge
+            status={
+              clientHasAccount(cell.row.original) ? "Has Account" : "No Account"
+            }
+            tone={clientHasAccount(cell.row.original) ? "green" : "secondary"}
           />
         ),
       },

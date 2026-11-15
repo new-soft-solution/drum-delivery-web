@@ -18,7 +18,7 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import { findAllParent, findMenuItem, getMenuItemFromURL } from "@/utils/menu";
 import type { MenuItemType, SubMenus } from "@/types/menu.type";
 import { LanguageContext } from "@/context/LanguageContext";
-import { usePermissions } from "@/utils/permissions";
+import { useIsClient, usePermissions } from "@/utils/permissions";
 
 const MenuItemWithChildren = ({
   item,
@@ -144,6 +144,7 @@ const AppMenu = ({ menuItems: allMenuItems }: AppMenuProps) => {
   const pathname = usePathname();
   const [activeMenuItems, setActiveMenuItems] = useState<Array<string>>([]);
   const { has } = usePermissions();
+  const isClient = useIsClient();
 
   // Items with no `permission` (section titles, Dashboard) always show;
   // everything else needs the user to actually hold that codename. This
@@ -151,8 +152,12 @@ const AppMenu = ({ menuItems: allMenuItems }: AppMenuProps) => {
   // page is the other half, for anyone who navigates to the URL directly.
   const menuItems = useMemo(
     () =>
-      allMenuItems.filter((item) => !item.permission || has(item.permission)),
-    [allMenuItems, has],
+      allMenuItems.filter(
+        (item) =>
+          (!item.permission || has(item.permission)) &&
+          !(isClient && item.hideForClient),
+      ),
+    [allMenuItems, has, isClient],
   );
 
   // menuItems is memoized above, but that alone wasn't enough to stop a
