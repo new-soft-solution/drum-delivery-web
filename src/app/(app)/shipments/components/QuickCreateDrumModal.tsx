@@ -10,6 +10,7 @@ import {
   Row,
 } from "react-bootstrap";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
@@ -33,14 +34,18 @@ interface QuickCreateDrumModalProps {
 
 type QuickDrumFields = Pick<
   DrumFormValues,
-  "drum_number" | "length_kms" | "net_weight_mt" | "gross_weight_mt"
+  | "drum_number"
+  | "length_kms"
+  | "net_weight_mt"
+  | "gross_weight_mt"
+  | "container_no"
 >;
 
 /**
  * Trimmed create-drum form for the "no matching drum, create one inline"
  * flow from DrumMultiPicker. Asks for exactly what the real backend
  * requires (drum_number, length_kms, net_weight_mt, gross_weight_mt) —
- * container/notes/status can be filled in later from the Drums page.
+ * notes/status can be filled in later from the Drums page.
  */
 export const QuickCreateDrumModal = ({
   show,
@@ -52,12 +57,21 @@ export const QuickCreateDrumModal = ({
   const form = useForm<QuickDrumFields>({
     resolver: zodResolver(
       withGrossWeightCheck(
-        drumFormBaseSchema.pick({
-          drum_number: true,
-          length_kms: true,
-          net_weight_mt: true,
-          gross_weight_mt: true,
-        }),
+        drumFormBaseSchema
+          .pick({
+            drum_number: true,
+            length_kms: true,
+            net_weight_mt: true,
+            gross_weight_mt: true,
+            container_no: true,
+          })
+          .extend({
+            container_no: z
+              .string()
+              .trim()
+              .min(1, "Container number is required")
+              .max(50),
+          }),
       ),
     ),
     defaultValues: {
@@ -65,6 +79,7 @@ export const QuickCreateDrumModal = ({
       length_kms: "",
       net_weight_mt: "",
       gross_weight_mt: "",
+      container_no: "",
     },
   });
 
@@ -80,6 +95,7 @@ export const QuickCreateDrumModal = ({
         length_kms: "",
         net_weight_mt: "",
         gross_weight_mt: "",
+        container_no: "",
       });
       onCreated(drum);
     },
@@ -104,21 +120,38 @@ export const QuickCreateDrumModal = ({
       </ModalHeader>
       <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
         <ModalBody>
-          <Form.Group className="mb-3">
-            <Form.Label>
-              Drum Number <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Control
-              {...form.register("drum_number")}
-              isInvalid={!!form.formState.errors.drum_number}
-              placeholder="e.g., 199"
-              autoFocus
-            />
-            <Form.Control.Feedback type="invalid">
-              {form.formState.errors.drum_number?.message}
-            </Form.Control.Feedback>
-          </Form.Group>
           <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Drum Number <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  {...form.register("drum_number")}
+                  isInvalid={!!form.formState.errors.drum_number}
+                  placeholder="e.g., 199"
+                  autoFocus
+                />
+                <Form.Control.Feedback type="invalid">
+                  {form.formState.errors.drum_number?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>
+                  Container Number <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  {...form.register("container_no")}
+                  isInvalid={!!form.formState.errors.container_no}
+                  placeholder="e.g., MSKU1234567"
+                />
+                <Form.Control.Feedback type="invalid">
+                  {form.formState.errors.container_no?.message}
+                </Form.Control.Feedback>
+              </Form.Group>
+            </Col>
             <Col md={4}>
               <Form.Group className="mb-3">
                 <Form.Label>
@@ -166,8 +199,7 @@ export const QuickCreateDrumModal = ({
             </Col>
           </Row>
           <Form.Text>
-            You can add container number, notes, and status later from the Drums
-            page.
+            You can add notes and status later from the Drums page.
           </Form.Text>
         </ModalBody>
         <ModalFooter>
