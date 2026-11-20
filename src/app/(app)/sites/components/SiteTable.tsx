@@ -1,20 +1,28 @@
 "use client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SiteDetails } from "./SiteDetails";
 import { SiteForm } from "./SiteForm";
+import SiteFilter from "./SiteFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
-import { deleteSite, getSites } from "@/services/drum-tracer/site.service";
-import { DTSite } from "@/types/drum-tracer/site.type";
+import { deleteSite, getSites } from "@/services/site.service";
+import { Site, SiteFilterType } from "@/types/site.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CRUDTableState } from "@/types/crud.type";
 import { CellContext } from "@tanstack/react-table";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import StatusBadge from "@/components/StatusBadge/StatusBadge";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
+import { useModulePermissions } from "@/utils/permissions";
 
-const EXPORT_COLUMNS: ExportColumn<DTSite>[] = [
+const EXPORT_COLUMNS: ExportColumn<Site>[] = [
   { header: "Site Name", value: (s) => s.name, xlsxWidth: 24, pdfWidth: 90 },
   {
     header: "Address",
@@ -48,10 +56,18 @@ const EXPORT_COLUMNS: ExportColumn<DTSite>[] = [
     xlsxWidth: 16,
     pdfWidth: 70,
   },
+  {
+    header: "Status",
+    value: (s) => (s.is_active ? "Active" : "Inactive"),
+    xlsxWidth: 12,
+    pdfWidth: 50,
+  },
 ];
 
 export const SiteTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("sites");
   const {
     state,
     setState,
@@ -60,23 +76,29 @@ export const SiteTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
-  } = useCRUDTable<DTSite>("dt-sites", deleteSite, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+  } = useCRUDTable<Site>("sites", deleteSite, {
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
     ...buildQueryParams(),
     search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
   };
   const { data, isFetching, isLoading, error } = useQuery({
-    queryKey: ["dt-sites", params],
+    queryKey: ["sites", params],
     queryFn: () =>
       getSites({
         search: params.search,
         ordering: params.ordering,
+        city: state.filters.city as string | undefined,
+        country: state.filters.country as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -121,7 +143,7 @@ export const SiteTable = () => {
       {
         header: "Site Name",
         accessorKey: "name",
-        cell: (cell: CellContext<DTSite, unknown>) => (
+        cell: (cell: CellContext<Site, unknown>) => (
           <span className="fw-bold d-flex align-items-center gap-2">
             <span
               style={{
@@ -150,20 +172,30 @@ export const SiteTable = () => {
       { header: "City", accessorKey: "city" },
       { header: "Country", accessorKey: "country" },
       { header: "Contact Person", accessorKey: "contact_person" },
+      {
+        header: "Status",
+        cell: (cell: CellContext<Site, unknown>) => (
+          <StatusBadge
+            status={cell.row.original.is_active ? "Active" : "Inactive"}
+          />
+        ),
+      },
       ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
+  const initialFilters: SiteFilterType = {};
+
   return (
     <>
-      <CRUDTable<DTSite>
+      <CRUDTable<Site, SiteFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<DTSite>}
+        state={state as CRUDTableState<Site, SiteFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -192,25 +224,28 @@ export const SiteTable = () => {
                 : selection,
           }))
         }
-        onAddItem={handleAddItem}
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Site", tableHeader: "All Sites" }}
+        options={{
+          entityName: "Site",
+          tableHeader: "All Sites",
+          filterOptions: { initialFilters, filterComponent: SiteFilter },
+        }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
         onPdfExport={handlePdfExport}
         onExcelExport={handleExcelExport}
       />
 
-      <DetailsModal<DTSite>
+      <DetailsModal<Site>
         show={state.modalState.showViewEditModal}
         onHide={closeModal}
         item={state.modalState.selectedItem ?? undefined}
         mode={state.modalState.mode}
         isLoading={isLoading}
         error={error}
-        onSuccess={() =>
-          queryClient.invalidateQueries({ queryKey: ["dt-sites"] })
-        }
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["sites"] })}
         viewComponent={({ item }) => <SiteDetails site={item} />}
         formComponent={SiteForm}
         entityName="Site"

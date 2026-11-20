@@ -1,3 +1,5 @@
+import { PaginatedResponse } from "@/types/global.type";
+
 export interface Permission {
   id: number;
   name: string;
@@ -31,6 +33,8 @@ export interface User {
   access: string;
   refresh: string;
   need_password_change: boolean;
+  date_joined: string;
+  username: string;
 }
 export interface LoginResponse {
   status: number;
@@ -84,4 +88,16 @@ export interface Paginated<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+export interface UserListParams {
+  page?: number;
+  page_size?: number;
+  role?: string;
+}
+
+export type UserListResponse = PaginatedResponse<User>;
+
+export interface UserFilterType {
+  role?: string;
+  [key: string]: unknown;
 }

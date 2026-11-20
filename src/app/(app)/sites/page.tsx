@@ -2,11 +2,16 @@
 import { Card, CardBody, Col, Row } from "react-bootstrap";
 import { SiteTable } from "./components/SiteTable";
 import PageHeader from "@/components/ui/PageHeader/PageHeader";
+import RequireModuleView from "@/components/ui/RequireModuleView/RequireModuleView";
 
 const SitesPage = () => {
   return (
-    <>
-      <PageHeader icon="ri:map-pin-line" title="Sites" subtitle="Delivery destinations for shipments" />
+    <RequireModuleView module="sites">
+      <PageHeader
+        icon="ri:map-pin-line"
+        title="Sites"
+        subtitle="Delivery destinations for shipments"
+      />
       <Row>
         <Col xs={12}>
           <Card className="border-0 shadow-sm">
@@ -16,7 +21,7 @@ const SitesPage = () => {
           </Card>
         </Col>
       </Row>
-    </>
+    </RequireModuleView>
   );
 };
 

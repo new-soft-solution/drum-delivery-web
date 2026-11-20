@@ -1,14 +1,14 @@
-// src/app/(app)/drums/components/DrumTable.tsx
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DrumDetails } from "./DrumDetails";
 import { DrumForm } from "./DrumForm";
 import { BulkImportDrumsModal } from "./BulkImportDrumsModal";
+import DrumFilter from "./DrumFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteDrum, getDrums } from "@/services/drum.service";
-import { Drum, DRUM_STATUS_LABELS } from "@/types/drum.type";
+import { Drum, DRUM_STATUS_LABELS, DrumFilterType } from "@/types/drum.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -20,6 +20,7 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS: ExportColumn<Drum>[] = [
   {
@@ -67,6 +68,8 @@ const EXPORT_COLUMNS: ExportColumn<Drum>[] = [
 export const DrumTable = () => {
   const queryClient = useQueryClient();
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("drums");
   const {
     state,
     setState,
@@ -76,25 +79,36 @@ export const DrumTable = () => {
     closeModal,
     getDefaultColumns,
   } = useCRUDTable<Drum>("drums", deleteDrum, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
-  const params = buildQueryParams();
-  // /api/drums/ (confirmed) supports `search`, `ordering`, `page` — no
-  // status filter, so none is sent (matches the Orders precedent).
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["drums", params],
     queryFn: () =>
       getDrums({
-        search: state.globalFilter || undefined,
+        search: params.search,
         ordering: params.ordering,
+        status: state.filters.status as string | undefined,
+        drum_number: state.filters.drum_number as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
@@ -168,15 +182,17 @@ export const DrumTable = () => {
     [getDefaultColumns],
   );
 
+  const initialFilters: DrumFilterType = {};
+
   return (
     <>
-      <CRUDTable<Drum>
+      <CRUDTable<Drum, DrumFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Drum>}
+        state={state as CRUDTableState<Drum, DrumFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -205,9 +221,14 @@ export const DrumTable = () => {
                 : selection,
           }))
         }
-        onAddItem={handleAddItem}
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Drum", tableHeader: "All Drums" }}
+        options={{
+          entityName: "Drum",
+          tableHeader: "All Drums",
+          filterOptions: { initialFilters, filterComponent: DrumFilter },
+        }}
         isImport={true}
         onImport={() => setShowBulkImport(true)}
         isPdfExport={rows.length > 0}

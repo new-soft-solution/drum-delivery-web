@@ -1,32 +1,17 @@
-// src/app/(app)/page.tsx
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
 import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
-import { getClients } from "@/services/client.service";
-import { getOrders } from "@/services/order.service";
-import { getDrums } from "@/services/drum.service";
-
-interface MockDashboardData {
-  shipments: {
-    total: number;
-    created: number;
-    inTransit: number;
-    delivered: number;
-  };
-  truckDeliveries: { total: number; scheduled: number };
-  sites: number;
-  recentShipments: {
-    id: number;
-    shipment_number: string;
-    destination_site_name: string;
-    status: string;
-    expected_arrival: string;
-  }[];
-}
+import { getDashboard } from "@/services/dashboard.service";
+import { getTruckDeliveries } from "@/services/truck-delivery.service";
+import { useIsReadOnly } from "@/utils/permissions";
+import {
+  getShipmentSiteNames,
+  SHIPMENT_STATUS_LABELS,
+  ShipmentStatus,
+} from "@/types/shipment.type";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -69,6 +54,14 @@ const STAT_CARDS = [
     bg: "#fdeef7",
   },
 ] as const;
+
+const SHIPMENT_STATUS_COLORS: Record<ShipmentStatus, string> = {
+  CREATED: "#c7cbd4",
+  IN_TRANSIT: "#3355c9",
+  ARRIVED: "#b46a12",
+  DELIVERED: "#203975",
+  CANCELLED: "#c0392b",
+};
 
 /** Small hand-rolled SVG donut — no charting library needed. */
 function StatusDonut({
@@ -165,71 +158,63 @@ function StatusDonut({
 }
 
 export default function DashboardPage() {
-  const [mock, setMock] = useState<MockDashboardData | null>(null);
-
-  useEffect(() => {
-    fetch("/api/dashboard")
-      .then((r) => r.json())
-      .then(setMock);
-  }, []);
-
-  // Clients and Orders come from the real backend now — fetched
-  // client-side (via authApi, which attaches the real access token) rather
-  // than through the local mock /api/dashboard route, which has no way to
-  // authenticate against the live API.
-  const { data: clientsData } = useQuery({
-    queryKey: ["dashboard-clients"],
-    queryFn: () => getClients({}),
-  });
-  const { data: ordersData } = useQuery({
-    queryKey: ["dashboard-orders"],
-    queryFn: () => getOrders({ ordering: "-created_at" }),
-  });
-  const { data: availableDrumsData } = useQuery({
-    queryKey: ["dashboard-drums-available"],
-    queryFn: () => getDrums({ search: "" }),
+  const isClient = useIsReadOnly();
+  const { data: dashboard, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => getDashboard(),
   });
 
-  const recentOrders = (ordersData?.results ?? []).slice(0, 5);
-  // NOTE: /api/drums/ has no status filter, so this counts "available" only
-  // within whatever page was fetched, not across all drums — an
-  // approximation, not an exact global count.
-  const availableDrumsCount = (availableDrumsData?.results ?? []).filter(
-    (d) => d.status === "AVAILABLE",
-  ).length;
+  const { data: truckDeliveriesData } = useQuery({
+    queryKey: ["dashboard-truck-deliveries-count"],
+    queryFn: () => getTruckDeliveries({}),
+  });
+
+  const recentOrders = dashboard?.recent_orders ?? [];
+  const recentShipments = dashboard?.recent_shipments ?? [];
+  const shipmentStatusCounts = dashboard?.shipment_statuses ?? {};
 
   const statValues: Record<string, string | number> = {
-    orders: ordersData ? ordersData.count : "—",
-    shipments: mock ? mock.shipments.total : "—",
-    drums: availableDrumsData
-      ? `${availableDrumsCount}/${availableDrumsData.count}`
-      : "—",
-    clients: clientsData ? clientsData.count : "—",
+    orders: dashboard ? dashboard.totals.orders : "—",
+    shipments: dashboard ? dashboard.totals.shipments : "—",
+    drums: dashboard ? dashboard.totals.available_drums : "—",
+    clients: dashboard ? dashboard.totals.clients : "—",
   };
+
+  const visibleStatCards = STAT_CARDS.filter(
+    (c) => !isClient || c.key === "orders" || c.key === "shipments",
+  );
+
+  const donutSegments = (
+    Object.keys(SHIPMENT_STATUS_LABELS) as ShipmentStatus[]
+  )
+    .filter((status) => (shipmentStatusCounts[status] ?? 0) > 0)
+    .map((status) => ({
+      label: SHIPMENT_STATUS_LABELS[status],
+      value: shipmentStatusCounts[status] ?? 0,
+      color: SHIPMENT_STATUS_COLORS[status],
+    }));
 
   return (
     <>
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
         <div>
-          <h4 className="mb-0 fw-bold">Welcome back 👋</h4>
+          <h4 className="mb-0 fw-bold">Welcome back</h4>
           <p className="text-muted small mb-0">
             Here&apos;s what&apos;s moving through Drum Tracer today.
           </p>
         </div>
         <div className="d-flex gap-2">
-          <Link href="/shipments" className="btn btn-sm btn-outline-secondary">
-            <IconifyIcon icon="ri:ship-line" className="me-1" />
-            View Shipments
-          </Link>
-          <Link href="/orders" className="btn btn-sm btn-primary">
-            <IconifyIcon icon="ri:add-line" className="me-1" />
-            View Orders
-          </Link>
+          {!isClient && (
+            <Link href="/quick-order" className="btn btn-success">
+              <IconifyIcon icon="ri:flashlight-line" className="me-1" /> Quick
+              Order
+            </Link>
+          )}
         </div>
       </div>
 
       <div className="row g-3 mb-3">
-        {STAT_CARDS.map((card) => (
+        {visibleStatCards.map((card) => (
           <div className="col-md-3 col-6" key={card.key}>
             <Link href={card.href} className="text-decoration-none">
               <div className="card h-100 border-0 shadow-sm">
@@ -271,33 +256,17 @@ export default function DashboardPage() {
           <div className="card h-100 border-0 shadow-sm">
             <div className="card-body">
               <h6 className="fw-bold mb-3">Shipment Status Mix</h6>
-              {!mock ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   <span
                     className="placeholder col-12"
                     style={{ height: 100 }}
                   />
                 </div>
+              ) : donutSegments.length === 0 ? (
+                <p className="text-muted small mb-0">No shipments yet.</p>
               ) : (
-                <StatusDonut
-                  segments={[
-                    {
-                      label: "Created",
-                      value: mock.shipments.created,
-                      color: "#c7cbd4",
-                    },
-                    {
-                      label: "In Transit",
-                      value: mock.shipments.inTransit,
-                      color: "#3355c9",
-                    },
-                    {
-                      label: "Delivered",
-                      value: mock.shipments.delivered,
-                      color: "#203975",
-                    },
-                  ]}
-                />
+                <StatusDonut segments={donutSegments} />
               )}
               <hr className="my-3" />
               <Link
@@ -309,7 +278,8 @@ export default function DashboardPage() {
                   style={{ color: "#203975" }}
                 />
                 <span>
-                  {mock?.truckDeliveries.total ?? "—"} truck deliveries
+                  {truckDeliveriesData ? truckDeliveriesData.count : "—"} truck
+                  deliveries
                 </span>
               </Link>
             </div>
@@ -328,7 +298,7 @@ export default function DashboardPage() {
                   View all
                 </Link>
               </div>
-              {!ordersData ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   {[1, 2, 3].map((i) => (
                     <span
@@ -342,9 +312,8 @@ export default function DashboardPage() {
                 <p className="text-muted small mb-0">No orders yet.</p>
               ) : (
                 recentOrders.map((o) => (
-                  <Link
+                  <div
                     key={o.id}
-                    href="/orders"
                     className="d-flex align-items-center gap-3 py-2 border-bottom text-decoration-none text-dark"
                   >
                     <Avatar name={o.client_details?.name ?? "?"} size={34} />
@@ -360,7 +329,7 @@ export default function DashboardPage() {
                       status={ORDER_STATUS_LABELS[o.status] ?? o.status}
                       size="sm"
                     />
-                  </Link>
+                  </div>
                 ))
               )}
             </div>
@@ -379,7 +348,7 @@ export default function DashboardPage() {
                   View all
                 </Link>
               </div>
-              {!mock ? (
+              {isLoading ? (
                 <div className="placeholder-glow">
                   {[1, 2, 3].map((i) => (
                     <span
@@ -389,10 +358,10 @@ export default function DashboardPage() {
                     />
                   ))}
                 </div>
-              ) : mock.recentShipments.length === 0 ? (
+              ) : recentShipments.length === 0 ? (
                 <p className="text-muted small mb-0">No shipments yet.</p>
               ) : (
-                mock.recentShipments.map((s) => (
+                recentShipments.map((s) => (
                   <Link
                     key={s.id}
                     href={`/shipments/${s.id}`}
@@ -422,10 +391,13 @@ export default function DashboardPage() {
                         {s.shipment_number}
                       </div>
                       <div className="small text-muted text-truncate">
-                        {s.destination_site_name}
+                        {getShipmentSiteNames(s).join(", ") || "—"}
                       </div>
                     </div>
-                    <StatusBadge status={s.status} size="sm" />
+                    <StatusBadge
+                      status={SHIPMENT_STATUS_LABELS[s.status] ?? s.status}
+                      size="sm"
+                    />
                   </Link>
                 ))
               )}

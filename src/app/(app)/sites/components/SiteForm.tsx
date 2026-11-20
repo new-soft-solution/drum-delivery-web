@@ -1,56 +1,67 @@
 "use client";
-import { Button, Form, Row, Col } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { Button, Col, Form, Row } from "react-bootstrap";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Spinner from "@/components/Spinner";
-import { DTSite } from "@/types/drum-tracer/site.type";
-import { dtSiteFormSchema, DTSiteFormValues } from "@/types/schemas/dt-site.schema";
-import { createSite, updateSite } from "@/services/drum-tracer/site.service";
+import { Site } from "@/types/site.type";
+import { siteFormSchema, SiteFormValues } from "@/types/schemas/site.schema";
+import { createSite, updateSite } from "@/services/site.service";
 import { NormalizedError } from "@/types/error.type";
 import { applyServerErrors } from "@/utils/applyServerErrors";
 import { useNotificationContext } from "@/context/useNotificationContext";
-
-const COUNTRIES = ["Netherlands", "Germany", "Belgium", "Bahrain", "United Arab Emirates", "Saudi Arabia"];
+import { CountrySelect } from "@/components/ui/country-select/CountrySelect";
+import { COUNTRY_LIST } from "@/assets/data/country-list";
+import RHFPhoneNumberInput from "@/components/ui/PhoneNumberInput/RHFPhoneNumberInput";
 
 interface SiteFormProps {
-  item?: DTSite;
+  item?: Site;
   onCancel: () => void;
   onSuccess: () => void;
 }
 
-export const SiteForm = ({ item: site, onCancel, onSuccess }: SiteFormProps) => {
+export const SiteForm = ({
+  item: site,
+  onCancel,
+  onSuccess,
+}: SiteFormProps) => {
   const queryClient = useQueryClient();
   const isEdit = !!site;
   const { showNotification } = useNotificationContext();
 
-  const form = useForm<DTSiteFormValues>({
-    resolver: zodResolver(dtSiteFormSchema),
+  const form = useForm<SiteFormValues>({
+    resolver: zodResolver(siteFormSchema),
     defaultValues: {
       name: site?.name || "",
       address: site?.address || "",
       city: site?.city || "",
-      postal_code: site?.postal_code || "",
       state: site?.state || "",
-      country: site?.country || "Netherlands",
+      country: site?.country || "",
+      postal_code: site?.postal_code || "",
       contact_person: site?.contact_person || "",
       contact_phone: site?.contact_phone || "",
+      is_active: site?.is_active ?? true,
     },
   });
 
-  const mutation = useMutation<unknown, NormalizedError, DTSiteFormValues>({
+  const mutation = useMutation<unknown, NormalizedError, SiteFormValues>({
     mutationFn: (payload) =>
       isEdit && site?.id ? updateSite(site.id, payload) : createSite(payload),
     onSuccess: () => {
       showNotification({
-        message: isEdit ? "Site updated successfully" : "Site created successfully",
+        message: isEdit
+          ? "Site updated successfully"
+          : "Site created successfully",
         variant: "success",
       });
-      queryClient.invalidateQueries({ queryKey: ["dt-sites"] });
+      queryClient.invalidateQueries({ queryKey: ["sites"] });
       onSuccess();
     },
     onError: (error) => {
-      showNotification({ message: error.message || "Something went wrong!", variant: "danger" });
+      showNotification({
+        message: error.message || "Something went wrong!",
+        variant: "danger",
+      });
       applyServerErrors(error, form.setError);
     },
   });
@@ -58,7 +69,7 @@ export const SiteForm = ({ item: site, onCancel, onSuccess }: SiteFormProps) => 
   return (
     <Form onSubmit={form.handleSubmit((data) => mutation.mutate(data))}>
       <Row>
-        <Col md={12}>
+        <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>
               Site Name <span className="text-danger">*</span>
@@ -73,7 +84,7 @@ export const SiteForm = ({ item: site, onCancel, onSuccess }: SiteFormProps) => 
             </Form.Control.Feedback>
           </Form.Group>
         </Col>
-        <Col md={12}>
+        <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>
               Address <span className="text-danger">*</span>
@@ -90,51 +101,87 @@ export const SiteForm = ({ item: site, onCancel, onSuccess }: SiteFormProps) => 
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>
-              City <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Control {...form.register("city")} isInvalid={!!form.formState.errors.city} />
-            <Form.Control.Feedback type="invalid">
-              {form.formState.errors.city?.message}
-            </Form.Control.Feedback>
+            <Form.Label>City</Form.Label>
+            <Form.Control {...form.register("city")} placeholder="Enter city" />
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>State / Province</Form.Label>
+            <Form.Control
+              {...form.register("state")}
+              placeholder="Enter state or province"
+            />
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Country</Form.Label>
+            <Controller
+              name="country"
+              control={form.control}
+              defaultValue={form.getValues("country")}
+              render={({ field }) => (
+                <CountrySelect
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  placeholder="Select country"
+                  countries={COUNTRY_LIST || []}
+                />
+              )}
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Postal Code</Form.Label>
-            <Form.Control {...form.register("postal_code")} />
-          </Form.Group>
-        </Col>
-        <Col md={6}>
-          <Form.Group className="mb-3">
-            <Form.Label>
-              Country <span className="text-danger">*</span>
-            </Form.Label>
-            <Form.Select {...form.register("country")}>
-              {COUNTRIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Form.Select>
+            <Form.Control
+              {...form.register("postal_code")}
+              placeholder="Enter postal code"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Contact Person</Form.Label>
-            <Form.Control {...form.register("contact_person")} />
+            <Form.Control
+              {...form.register("contact_person")}
+              placeholder="Enter contact person's name"
+            />
           </Form.Group>
         </Col>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>Contact Phone</Form.Label>
-            <Form.Control {...form.register("contact_phone")} />
+            <RHFPhoneNumberInput
+              name="contact_phone"
+              control={form.control}
+              label="Contact Phone"
+              placeholder="Enter contact phone number"
+              defaultCountry="NL"
+              size={"lg"}
+            />
           </Form.Group>
         </Col>
+        {isEdit && (
+          <Col md={6}>
+            <Form.Group className="mb-3 d-flex align-items-end pb-2">
+              <Form.Check
+                type="switch"
+                id="site-is-active"
+                label="Active"
+                {...form.register("is_active")}
+              />
+            </Form.Group>
+          </Col>
+        )}
       </Row>
 
       <div className="d-flex justify-content-end gap-2">
-        <Button variant="outline-secondary" onClick={onCancel} disabled={mutation.isPending}>
+        <Button
+          variant="outline-secondary"
+          onClick={onCancel}
+          disabled={mutation.isPending}
+        >
           Cancel
         </Button>
         <Button variant="primary" type="submit" disabled={mutation.isPending}>

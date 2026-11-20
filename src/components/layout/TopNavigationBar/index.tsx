@@ -11,6 +11,7 @@ import IconifyIcon from "@/components/wrappers/IconifyIcon";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import { useSessionStore } from "@/store/useSessionStore";
 import { logoutUser } from "@/services/auth/auth.service";
+import { isReadOnlyRole } from "@/utils/permissions";
 
 const TopNavigationBar = () => {
   const { scrollY } = useScrollEvent();
@@ -41,9 +42,12 @@ const TopNavigationBar = () => {
     <div className="topbar d-print-none">
       <div className="container-xxl">
         <nav
-          className={clsx("topbar-custom d-flex justify-content-between", {
-            "nav-sticky": scrollY >= 50,
-          })}
+          // className={clsx("topbar-custom d-flex justify-content-between", {
+          //   "nav-sticky": scrollY >= 50,
+          // })}
+          className={clsx(
+            "topbar-custom d-flex justify-content-between nav-sticky",
+          )}
           id="topbar-custom"
         >
           <ul className="topbar-item list-unstyled d-inline-flex align-items-center mb-0">
@@ -66,8 +70,9 @@ const TopNavigationBar = () => {
               <Dropdown align="end">
                 <Dropdown.Toggle
                   as="button"
-                  className="btn btn-link nav-link d-flex align-items-center gap-2 text-decoration-none border-0 bg-transparent"
-                  style={{ boxShadow: "none" }}
+                  className="btn btn-link nav-link d-flex align-items-center gap-2
+                  text-decoration-none border-0 bg-transparent"
+                  style={{ boxShadow: "none", textAlign: "left" }}
                 >
                   <Avatar
                     name={fullName}
@@ -78,17 +83,29 @@ const TopNavigationBar = () => {
                     <span className="fw-semibold small d-block text-dark">
                       {fullName}
                     </span>
-                    <span className="small text-muted" style={{ fontSize: 11 }}>
+                    <span
+                      className="small text-muted d-block"
+                      style={{ fontSize: 11 }}
+                    >
                       {user?.role ?? "Administrator"}
                     </span>
                   </span>
                 </Dropdown.Toggle>
-                <Dropdown.Menu>
+                <Dropdown.Menu className="p-0">
                   <Dropdown.Item as={Link} href="/profile">
                     <IconifyIcon icon="ri:user-line" className="me-2" />
                     My Profile
                   </Dropdown.Item>
-                  <Dropdown.Divider />
+                  {!isReadOnlyRole(user?.role) && (
+                    <>
+                      <Dropdown.Divider className="m-0" />
+                      <Dropdown.Item as={Link} href="/quick-order">
+                        <IconifyIcon icon="ri:add-line" className="me-2" />
+                        Quick Order
+                      </Dropdown.Item>
+                    </>
+                  )}
+                  <Dropdown.Divider className="m-0" />
                   <Dropdown.Item onClick={handleLogout} className="text-danger">
                     <IconifyIcon icon="ri:logout-box-r-line" className="me-2" />
                     Logout

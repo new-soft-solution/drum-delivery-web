@@ -6,14 +6,13 @@ import { ShipmentForm } from "./ShipmentForm";
 import ShipmentFilter from "./ShipmentFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
+import { deleteShipment, getShipments } from "@/services/shipment.service";
 import {
-  deleteShipment,
-  getShipments,
-} from "@/services/drum-tracer/shipment.service";
-import {
-  DTShipment,
-  DTShipmentFilterType,
-} from "@/types/drum-tracer/shipment.type";
+  getShipmentSiteNames,
+  Shipment,
+  SHIPMENT_STATUS_LABELS,
+  ShipmentFilterType,
+} from "@/types/shipment.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -27,8 +26,11 @@ import {
   exportToExcel,
   exportToPdf,
 } from "@/utils/report-export";
+import { formatDateNL } from "@/utils/dateFormatter";
+import { Button } from "react-bootstrap";
+import { useModulePermissions } from "@/utils/permissions";
 
-const EXPORT_COLUMNS: ExportColumn<DTShipment>[] = [
+const EXPORT_COLUMNS: ExportColumn<Shipment>[] = [
   {
     header: "Shipment Number",
     value: (s) => s.shipment_number,
@@ -37,39 +39,41 @@ const EXPORT_COLUMNS: ExportColumn<DTShipment>[] = [
   },
   {
     header: "Invoice Number",
-    value: (s) => s.invoice_number || "",
+    value: (s) => s.invoice_no || "",
     xlsxWidth: 20,
     pdfWidth: 75,
   },
   {
     header: "BL Number",
-    value: (s) => s.bl_number || "",
-    xlsxWidth: 18,
-    pdfWidth: 70,
-  },
-  {
-    header: "Container Number",
-    value: (s) => s.container_number || "",
+    value: (s) => s.bl_no || "",
     xlsxWidth: 18,
     pdfWidth: 70,
   },
   {
     header: "Destination",
-    value: (s) => s.destination_site_name || "",
+    value: (s) => getShipmentSiteNames(s).join(", "),
     xlsxWidth: 24,
     pdfWidth: 90,
   },
   {
     header: "Expected Arrival",
-    value: (s) => new Date(s.expected_arrival).toLocaleDateString(),
+    value: (s) =>
+      s.expected_arrival_date ? formatDateNL(s.expected_arrival_date) : "",
     xlsxWidth: 16,
     pdfWidth: 60,
   },
-  { header: "Status", value: (s) => s.status, xlsxWidth: 14, pdfWidth: 55 },
+  {
+    header: "Status",
+    value: (s) => SHIPMENT_STATUS_LABELS[s.status] ?? s.status,
+    xlsxWidth: 14,
+    pdfWidth: 55,
+  },
 ];
 
 export const ShipmentTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("shipments");
   const {
     state,
     setState,
@@ -78,25 +82,35 @@ export const ShipmentTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
-  } = useCRUDTable<DTShipment>("dt-shipments", deleteShipment, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    handleDelete,
+    handleEdit,
+  } = useCRUDTable<Shipment>("shipments", deleteShipment, {
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
     ...buildQueryParams(),
     search: state.globalFilter || undefined,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
     ...state.filters,
   };
   const { data, isFetching, isLoading, error } = useQuery({
-    queryKey: ["dt-shipments", params],
+    queryKey: ["shipments", params],
     queryFn: () =>
       getShipments({
         search: params.search,
         ordering: params.ordering,
-        status: state.filters.status as string,
+        status: state.filters.status as string | undefined,
+        site: state.filters.site as string | undefined,
+        expected_arrival_date_after: state.filters
+          .expected_arrival_date_after as string | undefined,
+        expected_arrival_date_before: state.filters
+          .expected_arrival_date_before as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
@@ -120,7 +134,9 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Shipments" });
+    await exportToExcel(rows, EXPORT_COLUMNS, meta, {
+      sheetName: "Shipments",
+    });
   }, [rows, state.globalFilter]);
 
   const handlePdfExport = useCallback(async () => {
@@ -132,16 +148,18 @@ export const ShipmentTable = () => {
         ? `Search: ${state.globalFilter}`
         : undefined,
     };
-    await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
+    await exportToPdf(rows, EXPORT_COLUMNS, meta, {
+      useColumnWidths: true,
+    });
   }, [rows, state.globalFilter]);
 
   const columns = useMemo(
     () => [
       ...getDefaultColumns.slice(0, -1),
       {
-        header: "Shipment Number",
-        accessorKey: "shipment_number",
-        cell: (cell: CellContext<DTShipment, unknown>) => (
+        header: "Invoice Number",
+        accessorKey: "invoice_no",
+        cell: (cell: CellContext<Shipment, unknown>) => (
           <Link
             href={`/shipments/${cell.row.original.id}`}
             className="fw-bold text-decoration-none d-flex align-items-center gap-2 text-dark"
@@ -169,36 +187,86 @@ export const ShipmentTable = () => {
           </Link>
         ),
       },
-      { header: "Destination", accessorKey: "destination_site_name" },
+      {
+        header: "Destination",
+        id: "sites",
+        enableSorting: false,
+        cell: (cell: CellContext<Shipment, unknown>) =>
+          getShipmentSiteNames(cell.row.original).join(", ") || "—",
+      },
       {
         header: "Expected Arrival",
-        accessorKey: "expected_arrival",
-        cell: (cell: CellContext<DTShipment, unknown>) =>
-          new Date(cell.getValue<string>()).toLocaleDateString(),
+        accessorKey: "expected_arrival_date",
+        cell: (cell: CellContext<Shipment, unknown>) => {
+          const v = cell.getValue<string | null>();
+          return v ? formatDateNL(v) : "—";
+        },
       },
       {
         header: "Status",
         accessorKey: "status",
-        cell: (cell: CellContext<DTShipment, unknown>) => (
-          <StatusBadge status={cell.getValue<string>()} />
-        ),
+        cell: (cell: CellContext<Shipment, unknown>) => {
+          const status = cell.getValue<string>();
+          return (
+            <StatusBadge
+              status={
+                SHIPMENT_STATUS_LABELS[
+                  status as keyof typeof SHIPMENT_STATUS_LABELS
+                ] ?? status
+              }
+            />
+          );
+        },
       },
-      ...getDefaultColumns.slice(-1),
+      {
+        header: "Actions",
+        cell: ({ row }: { row: { original: Shipment } }) => {
+          return (
+            <div className="d-flex align-items-center gap-2">
+              {canView && (
+                <Link href={`/shipments/${row.original.id}`}>
+                  <IconifyIcon icon="mdi:eye-outline" />
+                </Link>
+              )}
+              {canChange && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleEdit(row.original)}
+                >
+                  <IconifyIcon icon="mdi:pencil-outline" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  onClick={() => handleDelete(row.original)}
+                >
+                  <IconifyIcon icon="mdi:trash-can-outline" />
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+      // ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
-  const initialFilters: DTShipmentFilterType = {};
+  const initialFilters: ShipmentFilterType = {};
 
   return (
     <>
-      <CRUDTable<DTShipment, DTShipmentFilterType>
+      <CRUDTable<Shipment, ShipmentFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<DTShipment, DTShipmentFilterType>}
+        state={state as CRUDTableState<Shipment, ShipmentFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -228,7 +296,7 @@ export const ShipmentTable = () => {
           }))
         }
         onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
-        onAddItem={handleAddItem}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
         options={{
           entityName: "Shipment",
@@ -241,7 +309,7 @@ export const ShipmentTable = () => {
         onExcelExport={handleExcelExport}
       />
 
-      <DetailsModal<DTShipment>
+      <DetailsModal<Shipment>
         show={state.modalState.showViewEditModal}
         onHide={closeModal}
         item={state.modalState.selectedItem ?? undefined}
@@ -249,7 +317,7 @@ export const ShipmentTable = () => {
         isLoading={isLoading}
         error={error}
         onSuccess={() =>
-          queryClient.invalidateQueries({ queryKey: ["dt-shipments"] })
+          queryClient.invalidateQueries({ queryKey: ["shipments"] })
         }
         viewComponent={({ item }) => <ShipmentDetails shipment={item} />}
         formComponent={ShipmentForm}

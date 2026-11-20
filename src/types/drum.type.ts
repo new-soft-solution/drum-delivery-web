@@ -55,11 +55,17 @@ export interface DrumListParams {
   page_size?: number;
   ordering?: string;
   search?: string;
+  status?: string;
+  drum_number?: string;
+  ids?: string;
+  shipment_id?: string;
+  site_id?: string;
 }
 
 export type DrumListResponse = PaginatedResponse<Drum>;
 
 export interface DrumFilterType {
   status?: string;
+  drum_number?: string;
   [key: string]: unknown;
 }

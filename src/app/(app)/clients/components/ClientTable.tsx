@@ -1,12 +1,14 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ClientDetails } from "./ClientDetails";
 import { ClientForm } from "./ClientForm";
+import ClientFilter from "./ClientFilter";
+import ClientOrdersModal from "./ClientOrdersModal";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteClient, getClients } from "@/services/client.service";
-import { Client } from "@/types/client.type";
+import { Client, ClientFilterType, clientHasAccount } from "@/types/client.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -14,7 +16,15 @@ import Link from "next/link";
 import { CRUDTableState } from "@/types/crud.type";
 import Avatar from "@/components/ui/Avatar/Avatar";
 import StatusBadge from "@/components/StatusBadge/StatusBadge";
-import { ExportColumn, ExportMeta, exportToExcel, exportToPdf } from "@/utils/report-export";
+import {
+  ExportColumn,
+  ExportMeta,
+  exportToExcel,
+  exportToPdf,
+} from "@/utils/report-export";
+import IconifyIcon from "@/components/wrappers/IconifyIcon";
+import { Button } from "react-bootstrap";
+import { useModulePermissions } from "@/utils/permissions";
 
 const EXPORT_COLUMNS: ExportColumn<Client>[] = [
   {
@@ -53,6 +63,12 @@ const EXPORT_COLUMNS: ExportColumn<Client>[] = [
     pdfWidth: 55,
   },
   {
+    header: "Account",
+    value: (c) => (clientHasAccount(c) ? "Yes" : "No"),
+    xlsxWidth: 10,
+    pdfWidth: 45,
+  },
+  {
     header: "Status",
     value: (c) => (c.is_active ? "Active" : "Inactive"),
     xlsxWidth: 12,
@@ -62,6 +78,9 @@ const EXPORT_COLUMNS: ExportColumn<Client>[] = [
 
 export const ClientTable = () => {
   const queryClient = useQueryClient();
+  const [viewOrdersClient, setViewOrdersClient] = useState<Client | null>(null);
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("clients");
   const {
     state,
     setState,
@@ -70,28 +89,40 @@ export const ClientTable = () => {
     handleBulkDelete,
     closeModal,
     getDefaultColumns,
+    handleDelete,
+    handleEdit,
+    handleViewDetails,
   } = useCRUDTable<Client>("clients", deleteClient, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
-  const params = buildQueryParams();
-  // NOTE: the real /api/clients/ endpoint (confirmed via schema.yaml) only
-  // supports filtering by city/country/email/name/phone + page — there's no
-  // generic full-text `search` or `ordering` param like /api/orders/ has.
-  // The table's search box is mapped to the `name` filter as the most
-  // useful single-field stand-in.
+  const params = {
+    ...buildQueryParams(),
+    search: state.globalFilter || undefined,
+    ...state.filters,
+    ordering: state.sorting?.length
+      ? `${state.sorting[0].desc ? "-" : ""}${state.sorting[0].id}`
+      : undefined,
+  };
   const { data, isFetching, isLoading, error } = useQuery({
     queryKey: ["clients", params],
     queryFn: () =>
       getClients({
-        name: state.globalFilter || undefined,
+        search: params.search,
+        ordering: params.ordering,
+        city: state.filters.city as string | undefined,
+        country: state.filters.country as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
@@ -101,29 +132,33 @@ export const ClientTable = () => {
   // NOTE: exports cover whatever page is currently loaded, not the full
   // dataset — /api/clients/ is paginated and there's no "give me
   // everything" endpoint to export against instead.
+  const filtersLine = [
+    state.globalFilter ? `Search: ${state.globalFilter}` : null,
+    state.filters.city ? `City: ${state.filters.city}` : null,
+    state.filters.country ? `Country: ${state.filters.country}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
   const handleExcelExport = useCallback(async () => {
     const meta: ExportMeta = {
       title: "Clients",
       fileBaseName: "clients",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine: filtersLine || undefined,
     };
     await exportToExcel(rows, EXPORT_COLUMNS, meta, { sheetName: "Clients" });
-  }, [rows, state.globalFilter]);
+  }, [rows, filtersLine]);
 
   const handlePdfExport = useCallback(async () => {
     const meta: ExportMeta = {
       title: "Clients",
       fileBaseName: "clients",
       generatedAt: new Date(),
-      filtersLine: state.globalFilter
-        ? `Search: ${state.globalFilter}`
-        : undefined,
+      filtersLine: filtersLine || undefined,
     };
     await exportToPdf(rows, EXPORT_COLUMNS, meta, { useColumnWidths: true });
-  }, [rows, state.globalFilter]);
+  }, [rows, filtersLine]);
 
   const columns = useMemo(
     () => [
@@ -162,20 +197,80 @@ export const ClientTable = () => {
           />
         ),
       },
-      ...getDefaultColumns.slice(-1),
+      {
+        header: "Account",
+        cell: (cell: CellContext<Client, unknown>) => (
+          <StatusBadge
+            status={
+              clientHasAccount(cell.row.original) ? "Has Account" : "No Account"
+            }
+            tone={clientHasAccount(cell.row.original) ? "green" : "secondary"}
+          />
+        ),
+      },
+      {
+        header: "Actions",
+        cell: ({ row }: { row: { original: Client } }) => {
+          return (
+            <div className="d-flex align-items-center gap-2">
+              {canView && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleViewDetails(row.original)}
+                >
+                  <IconifyIcon icon="mdi:eye-outline" />
+                </Button>
+              )}
+              {canChange && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => handleEdit(row.original)}
+                >
+                  <IconifyIcon icon="mdi:pencil-outline" />
+                </Button>
+              )}
+              {canView && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => setViewOrdersClient(row.original)}
+                  title="View this client's orders"
+                >
+                  <IconifyIcon icon="ri:clipboard-line" />
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="text-danger"
+                  onClick={() => handleDelete(row.original)}
+                >
+                  <IconifyIcon icon="mdi:trash-can-outline" />
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+      // ...getDefaultColumns.slice(-1),
     ],
     [getDefaultColumns],
   );
 
+  const initialFilters: ClientFilterType = {};
+
   return (
     <>
-      <CRUDTable<Client>
+      <CRUDTable<Client, ClientFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Client>}
+        state={state as CRUDTableState<Client, ClientFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -204,9 +299,14 @@ export const ClientTable = () => {
                 : selection,
           }))
         }
-        onAddItem={handleAddItem}
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Client", tableHeader: "All Clients" }}
+        options={{
+          entityName: "Client",
+          tableHeader: "All Clients",
+          filterOptions: { initialFilters, filterComponent: ClientFilter },
+        }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
         onPdfExport={handlePdfExport}
@@ -226,6 +326,11 @@ export const ClientTable = () => {
         viewComponent={({ item }) => <ClientDetails client={item} />}
         formComponent={ClientForm}
         entityName="Client"
+      />
+      <ClientOrdersModal
+        show={!!viewOrdersClient}
+        onHide={() => setViewOrdersClient(null)}
+        client={viewOrdersClient}
       />
     </>
   );

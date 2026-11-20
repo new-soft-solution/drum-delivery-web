@@ -2,10 +2,11 @@
 import { Card, CardBody, Col, Row } from "react-bootstrap";
 import { TruckDeliveryTable } from "./components/TruckDeliveryTable";
 import PageHeader from "@/components/ui/PageHeader/PageHeader";
+import RequireModuleView from "@/components/ui/RequireModuleView/RequireModuleView";
 
 const TruckDeliveriesPage = () => {
   return (
-    <>
+    <RequireModuleView module="truckDeliveries">
       <PageHeader
         icon="ri:truck-line"
         title="Truck Deliveries"
@@ -20,7 +21,7 @@ const TruckDeliveriesPage = () => {
           </Card>
         </Col>
       </Row>
-    </>
+    </RequireModuleView>
   );
 };
 

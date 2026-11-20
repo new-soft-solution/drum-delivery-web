@@ -29,7 +29,9 @@ export interface BulkRestoreResponse {
   conflict_ids: (number | string)[];
   missing_ids: (number | string)[];
 }
-export const useCRUDTable = <T extends { id: number | string; deleted_at?: string }>(
+export const useCRUDTable = <
+  T extends { id: number | string; deleted_at?: string },
+>(
   entityName: string,
   deleteMutation?: ({ id, ids }: DeleteProps) => Promise<void>,
   options: CrudOptions = {
@@ -149,7 +151,7 @@ export const useCRUDTable = <T extends { id: number | string; deleted_at?: strin
     async (ids: (number | string)[]) => {
       const { accepted, control } = await confirm({
         title: "Delete Selected",
-        message: `Are you sure you want to delete ${ids.length} ${entityName}s?`,
+        message: `Are you sure you want to delete ${ids.length} ${entityName}?`,
         confirmText: "Delete",
         confirmVariant: "danger",
         icon: "mdi:trash-can-outline",

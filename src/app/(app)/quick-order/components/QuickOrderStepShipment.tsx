@@ -1,0 +1,219 @@
+"use client";
+import { Button, Col, Form, Row } from "react-bootstrap";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import Spinner from "@/components/Spinner";
+import { createShipment } from "@/services/shipment.service";
+import {
+  shipmentFormSchema,
+  ShipmentFormValues,
+} from "@/types/schemas/shipment.schema";
+import { getShipmentDrumIds, type Shipment } from "@/types/shipment.type";
+import type { NormalizedError } from "@/types/error.type";
+import { applyServerErrors } from "@/utils/applyServerErrors";
+import { useNotificationContext } from "@/context/useNotificationContext";
+import { ShipmentSitesField } from "@/app/(app)/shipments/components/ShipmentSitesField";
+import { OrderMultiPicker } from "@/app/(app)/shipments/components/OrderMultiPicker";
+import type { QuickOrderState } from "../page";
+
+interface StepShipmentProps {
+  state: QuickOrderState;
+  onBack: () => void;
+  onCreated: (
+    shipmentId: string,
+    shipmentNumber: string,
+    drumCount: number,
+  ) => void;
+}
+
+interface MutateVars {
+  values: ShipmentFormValues;
+  exitAfterSave: boolean;
+}
+
+export const QuickOrderStepShipment = ({
+  state,
+  onBack,
+  onCreated,
+}: StepShipmentProps) => {
+  const router = useRouter();
+  const { showNotification } = useNotificationContext();
+
+  // Same layout/fields as the real ShipmentForm — the order created in
+  // Step 1 is pre-selected (via defaultValues) but stays editable. Drums
+  // are added here too (pick / "+" / bulk import): a drum can only enter
+  // the system linked to a shipment, so this is where they're created.
+  const form = useForm<ShipmentFormValues>({
+    resolver: zodResolver(shipmentFormSchema),
+    defaultValues: {
+      invoice_no: "",
+      bl_no: "",
+      sites: [{ site: "", drums: [] }],
+      expected_arrival_date: "",
+      orders: state.orderId ? [state.orderId] : [],
+    },
+  });
+
+  const ordersValue = useWatch({ control: form.control, name: "orders" }) ?? [];
+
+  const mutation = useMutation<Shipment, NormalizedError, MutateVars>({
+    mutationFn: ({ values }) => createShipment(values),
+    onSuccess: (shipment, variables) => {
+      showNotification({
+        message: `Shipment ${shipment.shipment_number} created`,
+        variant: "success",
+      });
+      if (variables.exitAfterSave) {
+        router.push("/shipments");
+        return;
+      }
+      onCreated(
+        shipment.id,
+        shipment.shipment_number,
+        getShipmentDrumIds(shipment).length ||
+          new Set(variables.values.sites.flatMap((s) => s.drums)).size,
+      );
+    },
+    onError: (error) => {
+      showNotification({
+        message: error.message || "Failed to create shipment",
+        variant: "danger",
+      });
+      applyServerErrors(error, form.setError);
+    },
+  });
+
+  if (state.shipmentId) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-muted mb-1">
+          Shipment already created for this Quick Order:
+        </p>
+        <h5 className="fw-bold">{state.shipmentNumber}</h5>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() =>
+            onCreated(
+              state.shipmentId!,
+              state.shipmentNumber!,
+              state.drumCount ?? 0,
+            )
+          }
+        >
+          Continue to Truck Delivery
+        </Button>
+      </div>
+    );
+  }
+
+  const submitAndContinue = form.handleSubmit((values) =>
+    mutation.mutate({ values, exitAfterSave: false }),
+  );
+  const submitAndExit = form.handleSubmit((values) =>
+    mutation.mutate({ values, exitAfterSave: true }),
+  );
+
+  const isSavingAndExiting =
+    mutation.isPending && mutation.variables?.exitAfterSave;
+  const isSavingAndContinuing =
+    mutation.isPending && !mutation.variables?.exitAfterSave;
+
+  return (
+    <Form onSubmit={submitAndContinue}>
+      <h6 className="fw-bold mb-3">Step 2 — Create the Shipment</h6>
+      <Row>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>
+              Invoice Number <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Control
+              {...form.register("invoice_no")}
+              isInvalid={!!form.formState.errors.invoice_no}
+              placeholder="Enter invoice number"
+            />
+            <Form.Control.Feedback type="invalid">
+              {form.formState.errors.invoice_no?.message}
+            </Form.Control.Feedback>
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>
+              B/L No. <span className="text-danger">*</span>
+            </Form.Label>
+            <Form.Control
+              {...form.register("bl_no")}
+              isInvalid={!!form.formState.errors.bl_no}
+              placeholder="Enter B/L number"
+            />
+            <Form.Control.Feedback type="invalid">
+              {form.formState.errors.bl_no?.message}
+            </Form.Control.Feedback>
+          </Form.Group>
+        </Col>
+        <Col md={6}>
+          <OrderMultiPicker
+            value={ordersValue}
+            onChange={(ids) =>
+              form.setValue("orders", ids, { shouldDirty: true })
+            }
+          />
+        </Col>
+        <Col md={6}>
+          <Form.Group className="mb-3">
+            <Form.Label>Expected Arrival Date</Form.Label>
+            <Form.Control
+              type="date"
+              {...form.register("expected_arrival_date")}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <ShipmentSitesField form={form} />
+
+      <div className="d-flex justify-content-between">
+        <Button
+          variant="outline-secondary"
+          onClick={onBack}
+          disabled={mutation.isPending}
+        >
+          Back
+        </Button>
+        <div className="d-flex gap-2">
+          <Button
+            variant="outline-primary"
+            type="button"
+            disabled={mutation.isPending}
+            onClick={submitAndExit}
+          >
+            {isSavingAndExiting ? (
+              <div className="d-flex align-items-center justify-content-center gap-1">
+                <span>Saving...</span>
+                <Spinner size="sm" className="me-1" />
+              </div>
+            ) : (
+              "Save & Close"
+            )}
+          </Button>
+          <Button variant="primary" type="submit" disabled={mutation.isPending}>
+            {isSavingAndContinuing ? (
+              <div className="d-flex align-items-center justify-content-center gap-1">
+                <span>Creating...</span>
+                <Spinner color="white" size="sm" className="me-2" />
+              </div>
+            ) : (
+              "Create Shipment & Continue"
+            )}
+          </Button>
+        </div>
+      </div>
+    </Form>
+  );
+};
+
+export default QuickOrderStepShipment;

@@ -1,11 +1,7 @@
 "use client";
 
 import CountryFlag from "react-country-flag";
-import Select, {
-  components,
-  OptionProps,
-  SingleValueProps,
-} from "react-select";
+import Select, { components, OptionProps, SingleValueProps } from "react-select";
 
 export type CountryOption = {
   value: string;
@@ -106,7 +102,7 @@ export function CountrySelect({
             ? "#223b76"
             : state.isFocused
               ? "#e7f1ff"
-              : "white",
+              : "",
           color: state.isSelected ? "white" : "#212529",
           cursor: "pointer",
         }),

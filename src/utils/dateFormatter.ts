@@ -27,7 +27,7 @@ export const formatDateNL = (
   const d = dayjs(date).tz(tz);
   if (!d.isValid()) return "";
 
-  return d.format(time ? "DD-MM-YYYY HH:mm" : "DD-MM-YYYY");
+  return d.format(time ? "DD-MM-YYYY hh:mm" : "DD-MM-YYYY");
 };
 
 export const formatDateTimeWithCharsNL = (date: string | Date) => {

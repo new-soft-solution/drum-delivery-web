@@ -3,10 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { OrderDetails } from "./OrderDetails";
 import { OrderForm } from "./OrderForm";
+import OrderFilter from "./OrderFilter";
 import type { NormalizedError } from "@/types/error.type";
 import { useCRUDTable } from "@/components/Crud/hooks/useCRUDTable";
 import { deleteOrder, getOrders } from "@/services/order.service";
-import { Order } from "@/types/order.type";
+import { Order, OrderFilterType } from "@/types/order.type";
 import { CRUDTable } from "@/components/Crud/CRUDTable";
 import { DetailsModal } from "@/components/Crud/DetailsModal";
 import { CellContext } from "@tanstack/react-table";
@@ -20,6 +21,7 @@ import {
   exportToPdf,
 } from "@/utils/report-export";
 import { formatDateNL } from "@/utils/dateFormatter";
+import { useModulePermissions } from "@/utils/permissions";
 
 const STATUS_LABELS: Record<string, string> = {
   CREATED: "Created",
@@ -34,6 +36,12 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
     value: (o) => o.order_number,
     xlsxWidth: 22,
     pdfWidth: 80,
+  },
+  {
+    header: "PO Number",
+    value: (o) => o.po_number || "",
+    xlsxWidth: 20,
+    pdfWidth: 75,
   },
   {
     header: "Client",
@@ -71,6 +79,8 @@ const EXPORT_COLUMNS: ExportColumn<Order>[] = [
 
 export const OrderTable = () => {
   const queryClient = useQueryClient();
+  const { canAdd, canView, canChange, canDelete } =
+    useModulePermissions("orders");
   const {
     state,
     setState,
@@ -80,10 +90,10 @@ export const OrderTable = () => {
     closeModal,
     getDefaultColumns,
   } = useCRUDTable<Order>("orders", deleteOrder, {
-    isEdit: true,
-    isView: true,
-    isDelete: true,
-    showCheckBox: true,
+    isEdit: canChange,
+    isView: canView,
+    isDelete: canDelete,
+    showCheckBox: canDelete,
   });
 
   const params = {
@@ -100,10 +110,16 @@ export const OrderTable = () => {
       getOrders({
         search: params.search,
         ordering: params.ordering,
+        status: state.filters.status as string | undefined,
+        client: state.filters.client as string | undefined,
         page:
           typeof state.pagination?.pageIndex === "number"
             ? state.pagination.pageIndex + 1
             : 1,
+        page_size:
+          typeof state.pagination?.pageSize === "number"
+            ? state.pagination.pageSize
+            : 10,
       }),
     staleTime: 1000 * 60,
   });
@@ -138,6 +154,11 @@ export const OrderTable = () => {
     () => [
       ...getDefaultColumns.slice(0, -1),
       { header: "Order Number", accessorKey: "order_number" },
+      {
+        header: "PO Number",
+        cell: (cell: CellContext<Order, unknown>) =>
+          cell.row.original.po_number || <span className="text-muted">—</span>,
+      },
       {
         header: "Client",
         cell: (cell: CellContext<Order, unknown>) => {
@@ -187,15 +208,17 @@ export const OrderTable = () => {
     [getDefaultColumns],
   );
 
+  const initialFilters: OrderFilterType = {};
+
   return (
     <>
-      <CRUDTable<Order>
+      <CRUDTable<Order, OrderFilterType>
         data={rows}
         count={data?.count || 0}
         isLoading={isFetching}
         error={error as unknown as NormalizedError}
         columns={columns}
-        state={state as CRUDTableState<Order>}
+        state={state as CRUDTableState<Order, OrderFilterType>}
         onPaginationChange={(pagination) =>
           setState((prev) => ({
             ...prev,
@@ -224,9 +247,14 @@ export const OrderTable = () => {
                 : selection,
           }))
         }
-        onAddItem={handleAddItem}
+        onFilterChange={(filters) => setState((prev) => ({ ...prev, filters }))}
+        onAddItem={canAdd ? handleAddItem : undefined}
         onBulkDelete={(ids) => handleBulkDelete(ids)}
-        options={{ entityName: "Order", tableHeader: "All Orders" }}
+        options={{
+          entityName: "Order",
+          tableHeader: "All Orders",
+          filterOptions: { initialFilters, filterComponent: OrderFilter },
+        }}
         isPdfExport={rows.length > 0}
         isExcelExport={rows.length > 0}
         onPdfExport={handlePdfExport}

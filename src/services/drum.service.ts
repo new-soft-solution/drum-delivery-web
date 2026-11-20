@@ -86,26 +86,18 @@ export const deleteDrum = async ({ id, ids }: DeleteProps): Promise<void> => {
   }
 };
 
-export interface BulkImportResult {
-  created?: number;
-  failed?: number;
-  errors?: unknown[];
-  [key: string]: unknown;
+export interface BulkImportRowError {
+  row: number;
+  error: string;
 }
 
-/**
- * NOTE: /api/drums/bulk_import/'s documented request/response shapes are
- * both drf-spectacular artifacts too (request shows a single `Drum` object
- * under multipart/form-data; response shows a single `Drum`) — neither
- * makes sense for an endpoint literally named "bulk_import". Given the
- * `multipart/form-data` content-type (not `application/json`), the
- * near-certain real design is a **file upload** (CSV/Excel), matching the
- * "Bulk Import" UI pattern this app already uses elsewhere. `file` is the
- * conventional DRF field name for this and is what's sent — if the
- * backend expects a different field name, this is the one call site to
- * fix. The response is typed loosely and handled defensively in the UI
- * for the same reason.
- */
+export interface BulkImportResult {
+  message?: string;
+  created?: number;
+  skipped?: number;
+  errors?: BulkImportRowError[];
+}
+
 export const bulkImportDrums = async (
   file: File,
 ): Promise<BulkImportResult> => {

@@ -2,55 +2,60 @@
 import { useState } from "react";
 import {
   Button,
-  Form,
-  InputGroup,
   Modal,
   ModalBody,
   ModalFooter,
   ModalHeader,
 } from "react-bootstrap";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { assignDrumsToShipment } from "@/services/drum-tracer/shipment.service";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { setShipmentSiteDrums } from "@/services/shipment.service";
+import type { ShipmentSite } from "@/types/shipment.type";
 import { useNotificationContext } from "@/context/useNotificationContext";
-import Spinner from "@/components/Spinner";
-import { getDrums } from "@/services/drum.service";
+import { updateDrum } from "@/services/drum.service";
+import { DrumPickerWithImport } from "@/app/(app)/shipments/components/Drumpickerwithimport";
 
 interface AssignDrumsModalProps {
   show: boolean;
   onHide: () => void;
-  shipmentId: number;
+  shipmentId: string;
+  sites: ShipmentSite[];
+  siteId: string;
 }
 
 export const AssignDrumsModal = ({
   show,
   onHide,
   shipmentId,
+  sites,
+  siteId,
 }: AssignDrumsModalProps) => {
   const queryClient = useQueryClient();
   const { showNotification } = useNotificationContext();
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const siteName = sites.find((s) => s.site === siteId)?.site_name;
+  const current = sites.find((s) => s.site === siteId)?.drums ?? [];
+  const [selected, setSelected] = useState<string[]>(current);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dt-drums-unassigned", search],
-    queryFn: () => getDrums({ search, page_size: 100 }),
-    enabled: show,
-  });
+  const handleHide = () => onHide();
 
   const mutation = useMutation({
-    mutationFn: () => assignDrumsToShipment(shipmentId, selected),
+    mutationFn: async () => {
+      await setShipmentSiteDrums(shipmentId, sites, siteId, selected);
+      // Best-effort: reflect the link on each real drum too.
+      const removed = current.filter((id) => !selected.includes(id));
+      const added = selected.filter((id) => !current.includes(id));
+      await Promise.allSettled([
+        ...added.map((id) => updateDrum(id, { status: "IN_SHIPMENT" })),
+        ...removed.map((id) => updateDrum(id, { status: "AVAILABLE" })),
+      ]);
+    },
     onSuccess: () => {
       showNotification({
-        message: `${selected.length} drum(s) assigned`,
+        message: "Drums updated",
         variant: "success",
       });
-      queryClient.invalidateQueries({
-        queryKey: ["dt-shipment-drums", shipmentId],
-      });
-      queryClient.invalidateQueries({ queryKey: ["dt-drums-unassigned"] });
-      queryClient.invalidateQueries({ queryKey: ["dt-drums"] });
-      setSelected([]);
-      onHide();
+      queryClient.invalidateQueries({ queryKey: ["shipment", shipmentId] });
+      queryClient.invalidateQueries({ queryKey: ["drums"] });
+      handleHide();
     },
     onError: () =>
       showNotification({
@@ -59,67 +64,24 @@ export const AssignDrumsModal = ({
       }),
   });
 
-  const toggle = (id: string) =>
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered>
+    <Modal show={show} onHide={handleHide} size="lg" centered>
       <ModalHeader closeButton>
-        <h5 className="modal-title">Assign Drums to Shipment</h5>
+        <h5 className="modal-title">Assign Drums to {siteName}</h5>
       </ModalHeader>
       <ModalBody>
-        <InputGroup className="mb-3">
-          <Form.Control
-            placeholder="Search drums by number..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </InputGroup>
-
-        {isLoading ? (
-          <Spinner />
-        ) : !data || data.results.length === 0 ? (
-          <p className="text-muted text-center py-4">
-            No available (unassigned) drums found.
-          </p>
-        ) : (
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {data.results.map((d) => (
-              <Form.Check
-                key={d.id}
-                type="checkbox"
-                id={`drum-${d.id}`}
-                className="border-bottom py-2"
-                checked={selected.includes(d.id)}
-                onChange={() => toggle(d.id)}
-                label={
-                  <span>
-                    <b>{d.drum_number}</b>{" "}
-                    <span className="text-muted small">
-                      · {d.container_no} · {d.length_kms} KMs · Net{" "}
-                      {d.net_weight_mt} MT
-                    </span>
-                  </span>
-                }
-              />
-            ))}
-          </div>
-        )}
+        <DrumPickerWithImport value={selected} onChange={setSelected} />
       </ModalBody>
       <ModalFooter>
-        <Button variant="outline-secondary" onClick={onHide}>
+        <Button variant="outline-secondary" onClick={handleHide}>
           Cancel
         </Button>
         <Button
           variant="primary"
-          disabled={selected.length === 0 || mutation.isPending}
+          disabled={mutation.isPending}
           onClick={() => mutation.mutate()}
         >
-          {mutation.isPending
-            ? "Assigning..."
-            : `Assign ${selected.length || ""} Drum(s)`}
+          {mutation.isPending ? "Assigning..." : "Assign Drum(s)"}
         </Button>
       </ModalFooter>
     </Modal>
